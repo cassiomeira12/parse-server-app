@@ -1,0 +1,22 @@
+{
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "env",
+      "type": "pickString",
+      "description": "Escolha o Environment a ser executado",
+      "default": ".env",
+      "options": [
+        ".env",
+      ]
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Parse Server (Dev)",
+      "command": "npm run dev dotenv_config_path=${input:env}",
+      "request": "launch",
+      "type": "node-terminal"
+    }
+  ]
+}
