@@ -1,4 +1,5 @@
 var dateFormat = require('dateformat');
+const { deleteUserSOSConfigs } = require('./sos/user_sos_config');
 
 Parse.Cloud.beforeSave("_User", async (request) => {
   const { original, object } = request;
@@ -23,6 +24,8 @@ Parse.Cloud.beforeDelete("_User", async (request) => {
   sessions.forEach(object => {
     object.destroy({ useMasterKey: true });
   });
+
+  await deleteUserSOSConfigs(object);
 });
 
 Parse.Cloud.afterDelete("_User", async (request) => {
