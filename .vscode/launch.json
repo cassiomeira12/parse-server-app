@@ -5,9 +5,9 @@
       "id": "env",
       "type": "pickString",
       "description": "Escolha o Environment a ser executado",
-      "default": ".env",
+      "default": ".env.sos",
       "options": [
-        ".env",
+        ".env.sos",
       ]
     }
   ],
