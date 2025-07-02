@@ -9,6 +9,10 @@ const { PushNotificationScheme, PushNotificationDefaultData } = require('./push_
 const { NotificationScheme, NotificationDefaultData } = require('./notification');
 const { WebsiteVisitHistoryScheme, WebsiteVisitHistoryDefaultData } = require('./website_visit_history');
 
+const { SafetyContactScheme, SafetyContactDefaultData } = require('./sos/safety_contact');
+const { OccurrenceScheme, OccurrenceDefaultData } = require('./sos/ocurrence');
+const { UserSoSConfigScheme, UserSoSConfigDefaultData } = require('./sos/user_sos_config');
+
 const schemes = [
   RoleScheme, // Default
   InstallationScheme, // Default
@@ -21,6 +25,10 @@ const schemes = [
   NotificationScheme, // Default
   WebsiteVisitHistoryScheme, // Default
   //
+  //
+  SafetyContactScheme,
+  OccurrenceScheme,
+  UserSoSConfigScheme,
 ];
 
 const defaultData = [
@@ -35,6 +43,10 @@ const defaultData = [
   NotificationDefaultData, // Default
   WebsiteVisitHistoryDefaultData, // Default
   //
+  //
+  SafetyContactDefaultData,
+  OccurrenceDefaultData,
+  UserSoSConfigDefaultData,
 ];
 
 module.exports = { schemes, defaultData };
