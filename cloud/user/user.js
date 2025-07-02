@@ -1,5 +1,6 @@
 const { catchError } = require('../crashlytics');
 const { getUserSoSConfig } = require('../sos/user_sos_config');
+const { deleteUserSOSConfigs } = require('../sos/user_sos_config');
 
 Parse.Cloud.define('me', async (request) => {
   const { user } = request;
@@ -58,6 +59,8 @@ Parse.Cloud.beforeDelete("_User", async (request) => {
   sessions.forEach(object => {
     object.destroy({ useMasterKey: true });
   });
+
+  await deleteUserSOSConfigs(object);
 });
 
 Parse.Cloud.beforeSave("UserDeleted", async (request) => {
