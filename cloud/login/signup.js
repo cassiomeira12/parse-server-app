@@ -1,5 +1,6 @@
 const { getUserData } = require('../user/user');
 const { decryptData } = require('../security/encrypt/encrypt');
+const { createUserSOSConfig } = require('../sos/user_sos_config');
 
 Parse.Cloud.define('signup', async (request) => {
   const { params, headers } = request;
@@ -24,6 +25,8 @@ Parse.Cloud.define('signup', async (request) => {
   const installationId = request.installationId;
 
   const userLogged = await Parse.User.logIn(username, password, { installationId: installationId });
+
+  await createUserSOSConfig(userLogged);
 
   return await getUserData(userLogged);
 }, {
