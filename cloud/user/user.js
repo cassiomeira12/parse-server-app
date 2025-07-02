@@ -1,3 +1,5 @@
+const { getUserSoSConfig } = require('../sos/user_sos_config');
+
 Parse.Cloud.define('me', async (request) => {
   const { user } = request;
 
@@ -53,6 +55,11 @@ const getUserData = async (user) => {
   try {
     const permissionsRoles =  await getUserPermissions(userData);
     userJson['permissions'] = permissionsRoles;
+  } catch (error) {}
+
+  try {
+    const sosConfig = await getUserSoSConfig(user);
+    userJson['sosConfig'] = sosConfig;
   } catch (error) {}
 
   return userJson;
