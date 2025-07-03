@@ -5,7 +5,7 @@ const CredentialScheme = {
       type: "String",
       required: true,
     },
-    username: {
+    userName: {
       type: "String",
       required: false,
     },
