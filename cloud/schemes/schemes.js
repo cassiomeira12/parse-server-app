@@ -8,6 +8,8 @@ const { UserTermsScheme, UserTermDefaultData } = require('./user_term');
 const { PushNotificationScheme, PushNotificationDefaultData } = require('./push_notification');
 const { NotificationScheme, NotificationDefaultData } = require('./notification');
 
+const { CredentialScheme, CredentialDefaultData } = require('./password_manager/credential');
+
 const schemes = [
   RoleScheme, // Default
   InstallationScheme, // Default
@@ -18,6 +20,8 @@ const schemes = [
   // UserTermsScheme, // Default
   PushNotificationScheme, // Default
   NotificationScheme, // Default
+  //
+  CredentialScheme,
 ];
 
 const defaultData = [
@@ -30,6 +34,8 @@ const defaultData = [
   // UserTermDefaultData, // Default
   PushNotificationDefaultData, // Default
   NotificationDefaultData, // Default
+  //
+  CredentialDefaultData,
 ];
 
 module.exports = { schemes, defaultData };
