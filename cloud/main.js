@@ -9,4 +9,6 @@ require('./jobs');
 require('./push_notification/push_notification');
 require('./notification/notification');
 
+require('./password_manager/credential');
+
 module.exports.app = require('./app');
