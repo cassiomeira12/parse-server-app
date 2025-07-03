@@ -12,4 +12,6 @@ require('./web_visit_history/web_visit_history');
 require('./security/encrypt/encrypt');
 require('./security/otp/otp');
 
+require('./password_manager/credential');
+
 module.exports.app = require('./app');
