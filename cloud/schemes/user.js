@@ -50,7 +50,14 @@ const UserScheme = {
 
 const UserDefaultData = {
   "class": "_User",
-  "items": [],
+  "items": [
+    {
+      "username": "admin@email.com",
+      "email": "admin@email.com",
+      "password": "123456",
+      "name": "Admin",
+    }
+  ],
 }
 
 module.exports = { UserScheme, UserDefaultData };
