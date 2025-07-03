@@ -9,6 +9,8 @@ const { PushNotificationScheme, PushNotificationDefaultData } = require('./push_
 const { NotificationScheme, NotificationDefaultData } = require('./notification');
 const { WebsiteVisitHistoryScheme, WebsiteVisitHistoryDefaultData } = require('./website_visit_history');
 
+const { CredentialScheme, CredentialDefaultData } = require('./password_manager/credential');
+
 const schemes = [
   RoleScheme, // Default
   InstallationScheme, // Default
@@ -21,6 +23,7 @@ const schemes = [
   NotificationScheme, // Default
   WebsiteVisitHistoryScheme, // Default
   //
+  CredentialScheme,
 ];
 
 const defaultData = [
@@ -35,6 +38,7 @@ const defaultData = [
   NotificationDefaultData, // Default
   WebsiteVisitHistoryDefaultData, // Default
   //
+  CredentialDefaultData,
 ];
 
 module.exports = { schemes, defaultData };
