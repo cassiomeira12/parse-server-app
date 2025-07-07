@@ -7,8 +7,6 @@ Parse.Cloud.beforeSave("Credential", async (request) => {
     acl.setPublicWriteAccess(false);
     acl.setReadAccess(user.id, true);
     acl.setWriteAccess(user.id, true);
-    acl.setRoleReadAccess("Admin", true);
-    acl.setRoleWriteAccess("Admin", true);
     
     object.setACL(acl);
   }
