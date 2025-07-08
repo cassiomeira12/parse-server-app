@@ -173,15 +173,13 @@ if (allowedOrigins) {
 }
 
 app.all('*', (req, res, next) => {
-  const origin = req.get('origin');
-  const url = req.originalUrl;
-  if (origin === undefined) {
-    if (url !== '/parse/health' && url !== '/parse/users/me') {
-      if (req.header('X-Parse-Client-Key') !== config.clientKey) {
-        return res.status(403).send({
-          'error': 'unauthorized',
-        });
-      }
+  const origin = req.get('origin') || req.headers.origin;
+  const ignoreGetRequest = req.method !== 'GET';
+  if (origin === undefined && ignoreGetRequest) {
+    if (req.header('X-Parse-Client-Key') !== config.clientKey) {
+      return res.status(403).send({
+        'error': 'unauthorized',
+      });
     }
   }
   next();
