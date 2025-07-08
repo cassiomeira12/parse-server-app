@@ -158,6 +158,7 @@ if (allowedOrigins) {
   app.use(helmet.xssFilter());
 
   app.use(cors({
+    origin: true,
     credentials: true,
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
