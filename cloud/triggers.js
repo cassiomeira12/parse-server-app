@@ -1,3 +1,5 @@
+const { deleteUserCredentials } = require('./password_manager/credential');
+
 var dateFormat = require('dateformat');
 
 Parse.Cloud.beforeSave("_User", async (request) => {
@@ -15,11 +17,13 @@ Parse.Cloud.beforeSave("_User", async (request) => {
 });
 
 Parse.Cloud.beforeDelete("_User", async (request) => {
-  const { object } = request;
+  const { object, user } = request;
+
+  await deleteUserCredentials(user);
 
   const querySessions = new Parse.Query("_Session");
   querySessions.equalTo("user", object.toPointer());
-  const sessions = await querySessions.find({ useMasterKey: true });
+  const sessions = await querySessions.findAll({ useMasterKey: true });
   sessions.forEach(object => {
     object.destroy({ useMasterKey: true });
   });
