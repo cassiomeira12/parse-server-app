@@ -115,6 +115,14 @@ app.get(webAppPath, (_, res) => {
   res.sendFile(resolve(projectPath + webFolder + '/index.html'));
 });
 
+app.get('/privacy-policy', (_, res) => {
+  res.sendFile(resolve(projectPath + '/public/privacy_policy.html'));
+});
+
+app.get('/terms-conditions', (_, res) => {
+  res.sendFile(resolve(projectPath + '/public/terms_conditions.html'));
+});
+
 var usersDashboards = undefined;
 if (process.env.USERS) {
   usersDashboards = JSON.parse(process.env.USERS);
@@ -204,6 +212,8 @@ server.listen(process.env.PORT, function () {
   console.log(`REST API running on ${serverURL + parseMount}`);
   console.log('GraphQL API running on ' + graphQLServerURL);
   console.log('Parse Dashboard running on ' + process.env.SERVER_URL + ':' + process.env.PORT + '/dashboard');
+  console.log('Parse Web App Privacy Policy ' + process.env.SERVER_URL + ':' + process.env.PORT + '/privacy-policy');
+  console.log('Parse Web App Terms Conditions ' + process.env.SERVER_URL + ':' + process.env.PORT + '/terms-conditions');
   console.log(`Allowed Origins ${allowedOrigins}`);
 });
 
