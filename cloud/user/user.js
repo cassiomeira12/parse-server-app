@@ -1,4 +1,5 @@
 const { catchError } = require('../crashlytics');
+const { deleteUserCredentials } = require('../password_manager/credential');
 
 Parse.Cloud.define('me', async (request) => {
   const { user } = request;
@@ -50,6 +51,8 @@ Parse.Cloud.beforeSave("_User", async (request) => {
 
 Parse.Cloud.beforeDelete("_User", async (request) => {
   const { object } = request;
+
+  await deleteUserCredentials(user);
 
   const querySessions = new Parse.Query("_Session");
   querySessions.equalTo("user", object.toPointer());
