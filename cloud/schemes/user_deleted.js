@@ -1,11 +1,10 @@
+const { UserScheme } = require('./user');
+
 const UserDeletedScheme = {
   className: "UserDeleted",
   fields: {
+    ...UserScheme.fields,
     userId: {
-      type: "String",
-      required: true,
-    },
-    name: {
       type: "String",
       required: true,
     },
@@ -21,18 +20,10 @@ const UserDeletedScheme = {
       type: "Boolean",
       required: false,
     },
-    phoneNumber: {
+    reason: {
       type: "String",
-      require: true,
+      required: true,
     },
-    phoneVerified: {
-      type: "Boolean",
-      require: false,
-    },
-    locale: {
-      type: "String",
-      require: false,
-    }
   },
   classLevelPermissions: {
     get: {

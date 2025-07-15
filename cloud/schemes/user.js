@@ -5,14 +5,6 @@ const UserScheme = {
       type: "String",
       required: true,
     },
-    phoneNumber: {
-      type: "String",
-      require: true,
-    },
-    phoneVerified: {
-      type: "Boolean",
-      require: false,
-    },
     avatarUrl: {
       type: "String",
       require: false,
@@ -42,7 +34,6 @@ const UserScheme = {
       "role:Admin": true
     },
     delete: {
-      requiresAuthentication: true,
       "role:Admin": true
     },
   },
