@@ -10,8 +10,8 @@ var schedule = require('node-schedule');
 
 // '*/5 * * * *' every 5 min
 
-// Schedule 00:00h envery day
-schedule.scheduleJob('*/1 * * * *', function () {
+// Schedule 00:00h every day
+schedule.scheduleJob('* * 0 * *', function () {
   Parse.Cloud.startJob("clearOldSessions");
 });
 
