@@ -1,3 +1,5 @@
+const { deleteUserCredentials } = require('../password_manager/credential');
+
 Parse.Cloud.define('me', async (request) => {
   const { user } = request;
 
@@ -14,6 +16,8 @@ Parse.Cloud.define('deleteAccount', async (request) => {
   const userQuery = new Parse.Query("_User");
   userQuery.includeAll();
   const userData = await userQuery.get(user.id, { useMasterKey: true });
+
+  await deleteUserCredentials(user);
 
   await userData.destroy({ useMasterKey: true });
 
