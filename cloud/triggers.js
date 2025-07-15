@@ -25,22 +25,6 @@ Parse.Cloud.beforeDelete("_User", async (request) => {
   });
 });
 
-Parse.Cloud.afterDelete("_User", async (request) => {
-  const { object } = request;
-
-  const userDeleted = new Parse.Object("UserDeleted");
-  userDeleted.set("userId", object.id);
-  userDeleted.set("name", object.get("name"));
-  userDeleted.set("username", object.get("username"));
-  userDeleted.set("email", object.get("email"));
-  userDeleted.set("emailVerified", object.get("emailVerified"));
-  userDeleted.set("phoneNumber", object.get("phoneNumber"));
-  userDeleted.set("phoneVerified", object.get("phoneVerified"));
-  userDeleted.set("locale", object.get("locale"));
-
-  await userDeleted.save(null, { useMasterKey: true });
-});
-
 Parse.Cloud.beforeSave("UserDeleted", async (request) => {
   const { original, object, user } = request;
   

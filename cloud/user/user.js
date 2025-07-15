@@ -6,6 +6,32 @@ Parse.Cloud.define('me', async (request) => {
   requireUser: true,
 });
 
+Parse.Cloud.define('deleteAccount', async (request) => {
+  const { params, user } = request;
+
+  const reason = params.reason;
+
+  const userQuery = new Parse.Query("_User");
+  userQuery.includeAll();
+  const userData = await userQuery.get(user.id, { useMasterKey: true });
+
+  await userData.destroy({ useMasterKey: true });
+
+  const userDeleted = new Parse.Object("UserDeleted");
+  userDeleted.set("userId", userData.id);
+  userDeleted.set("name", userData.get("name"));
+  userDeleted.set("username", userData.get("username"));
+  userDeleted.set("email", userData.get("email"));
+  userDeleted.set("emailVerified", userData.get("emailVerified"));
+  userDeleted.set("locale", userData.get("locale"));
+  userDeleted.set("reason", reason);
+
+  await userDeleted.save(null, { useMasterKey: true });
+}, {
+  fields: ['reason'],
+  requireUser: true,
+});
+
 const getUserData = async (user) => {
   const userQuery = new Parse.Query("_User");
   userQuery.includeAll();
