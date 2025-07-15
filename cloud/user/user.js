@@ -18,6 +18,8 @@ Parse.Cloud.define('deleteAccount', async (request) => {
   const userQuery = new Parse.Query("_User");
   const userData = await userQuery.get(user.id, { useMasterKey: true });
 
+  await deleteUserCredentials(user);
+
   await userData.destroy({ useMasterKey: true });
 
   const userDeleted = new Parse.Object("UserDeleted");
@@ -64,8 +66,6 @@ Parse.Cloud.beforeSave("_User", async (request) => {
 
 Parse.Cloud.beforeDelete("_User", async (request) => {
   const { object } = request;
-
-  await deleteUserCredentials(user);
 
   const querySessions = new Parse.Query("_Session");
   querySessions.equalTo("user", object.toPointer());
