@@ -2,7 +2,6 @@ const schedule = require('node-schedule');
 const { path, resolve } = require('path');
 const spawn = require('child_process').spawn;
 const dateFormat = require('dateformat');
-require('dotenv/config');
 
 // *    *    *    *    *    *
 // 1 second (0 - 59, OPTIONAL)
@@ -48,7 +47,8 @@ Parse.Cloud.job("clearOldSessions", async (request) => {
     })
   });
 
-  return ("Successfully retrieved " + results.length + " invalid logins.");
+  const dateBR = new Date(new Date().toLocaleString('en', { timeZone: 'America/Sao_Paulo' }));
+  return ("Successfully retrieved " + results.length + " invalid logins at " + dateFormat(dateBR, 'dd-mm-yyyy HH:MM'));
 });
 
 Parse.Cloud.job("createDefaultData", async (request) => {
@@ -111,10 +111,12 @@ Parse.Cloud.job("backupDatabase", async (request) => {
   const backupPath = `/${dateFormat(date, 'mm-yyyy')}/${dateFormat(date, 'dd')}/`;
   const backupsPath = resolve(__dirname + '/../../backups' + backupPath);
   const databaseUri = process.env.DATABASE_URI || process.env.MONGODB_URI;
-  
+
   // mongodump --uri="${databaseUri}" --out=${backupsPath}
 
   spawn('mongodump', [`--uri="${databaseUri}"`, `--out=${backupsPath}`]);
+
+  return ("Backup database  " + dateFormat(date, 'dd-mm-yyyy HH:MM'));
 });
 
 Parse.Cloud.job("restoreDatabase", async (request) => {
