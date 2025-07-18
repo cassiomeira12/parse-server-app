@@ -1,18 +1,26 @@
-var schedule = require('node-schedule');
+const schedule = require('node-schedule');
+const { path, resolve } = require('path');
+const spawn = require('child_process').spawn;
+const dateFormat = require('dateformat');
+require('dotenv/config');
 
 // *    *    *    *    *    *
-// second (0 - 59, OPTIONAL)
-// minute (0 - 59)
-// hour (0 - 23)
-// day of month (1 - 31)
-// month (1 - 12)
-// day of week (0 - 7) (0 or 7 is Sun)
+// 1 second (0 - 59, OPTIONAL)
+// 2 minute (0 - 59)
+// 3 hour (0 - 23)
+// 4 day of month (1 - 31)
+// 5 month (1 - 12)
+// 6 day of week (0 - 7) (0 or 7 is Sun)
 
 // '*/5 * * * *' every 5 min
 
-// Schedule 00:00h every day
-schedule.scheduleJob('* * 0 * *', function () {
+// Schedule 23:59h every day
+schedule.scheduleJob('58 3 * *', function () {
   Parse.Cloud.startJob("clearOldSessions");
+});
+
+schedule.scheduleJob('59 23 * *', function () {
+  Parse.Cloud.startJob("backupDatabase");
 });
 
 Parse.Cloud.job("clearOldSessions", async (request) => {
@@ -52,7 +60,7 @@ Parse.Cloud.job("createDefaultData", async (request) => {
     const className = data.class;
     const classData = data.items;
     console.log(className);
-    
+
     await Promise.all(classData.map(async (item) => {
       const query = new Parse.Query(className);
       const object = new Parse.Object(className);
@@ -95,4 +103,24 @@ Parse.Cloud.job("createDefaultData", async (request) => {
       }
     }));
   }));
+});
+
+Parse.Cloud.job("backupDatabase", async (request) => {
+  const date = new Date(new Date().toLocaleString('en', { timeZone: 'America/Sao_Paulo' }))
+
+  const backupPath = `/${dateFormat(date, 'mm-yyyy')}/${dateFormat(date, 'dd')}/`;
+  const backupsPath = resolve(__dirname + '/../../backups' + backupPath);
+  const databaseUri = process.env.DATABASE_URI || process.env.MONGODB_URI;
+  
+  // mongodump --uri="${databaseUri}" --out=${backupsPath}
+
+  spawn('mongodump', [`--uri="${databaseUri}"`, `--out=${backupsPath}`]);
+});
+
+Parse.Cloud.job("restoreDatabase", async (request) => {
+  const databaseUri = process.env.DATABASE_URI || process.env.MONGODB_URI;
+
+  // mongorestore --uri="${databaseUri}" --drop ./backups/databasename
+
+  // spawn('mongorestore', [`--uri="${databaseUri}"`,'--drop', `--out=${backupPath}`]);
 });
