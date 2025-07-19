@@ -111,17 +111,20 @@ Parse.Cloud.job("backupDatabase", async (request) => {
   const backupsPath = resolve(__dirname + '/../../backups' + backupPath);
   const databaseUri = process.env.DATABASE_URI || process.env.MONGODB_URI;
 
-  // mongodump --uri="${databaseUri}" --out=${backupsPath}
-
   spawn('mongodump', [`--uri="${databaseUri}"`, `--out=${backupsPath}`]);
 
-  return ("Backup database  " + dateFormat(date, 'dd-mm-yyyy HH:MM'));
+  return ("Backup database " + dateFormat(date, 'dd-mm-yyyy HH:MM'));
 });
 
-Parse.Cloud.job("restoreDatabase", async (request) => {
+Parse.Cloud.job("restoreLastBackup", async (request) => {
+  const date = new Date(new Date().toLocaleString('en', { timeZone: 'America/Sao_Paulo' }))
+  const yesterday = date.setDate(date.getDate() - 1);
+
+  const backupPath = `/${dateFormat(date, 'mm-yyyy')}/${dateFormat(yesterday, 'dd')}/*`;
+  const backupsPath = resolve(__dirname + '/../../backups' + backupPath);
   const databaseUri = process.env.DATABASE_URI || process.env.MONGODB_URI;
 
-  // mongorestore --uri="${databaseUri}" --drop ./backups/databasename
+  // spawn('mongorestore', [`--uri="${databaseUri}"`,'--drop', `--out=${backupsPath}`]);
 
-  // spawn('mongorestore', [`--uri="${databaseUri}"`,'--drop', `--out=${backupPath}`]);
+  return ("Backup restored " + backupPath);
 });
