@@ -1,5 +1,5 @@
 const schedule = require('node-schedule');
-const { path, resolve } = require('path');
+const { resolve } = require('path');
 const spawn = require('child_process').spawn;
 const dateFormat = require('dateformat');
 
@@ -11,14 +11,13 @@ const dateFormat = require('dateformat');
 // 5 month (1 - 12)
 // 6 day of week (0 - 7) (0 or 7 is Sun)
 
-// '*/5 * * * *' every 5 min
-
-// Schedule 23:59h every day
-schedule.scheduleJob('58 3 * *', function () {
+// Schedule 23:59:45h every day
+schedule.scheduleJob('45 59 23 * * *', function () {
   Parse.Cloud.startJob("clearOldSessions");
 });
 
-schedule.scheduleJob('59 23 * *', function () {
+// Schedule 23:59:59h every day
+schedule.scheduleJob('59 59 23 * * *', function () {
   Parse.Cloud.startJob("backupDatabase");
 });
 
@@ -37,7 +36,7 @@ Parse.Cloud.job("clearOldSessions", async (request) => {
 
   querySession.lessThanOrEqualTo("expiresAt", date);
 
-  const results = await querySession.find({ useMasterKey: true });
+  const results = await querySession.findAll({ useMasterKey: true });
 
   results.forEach(object => {
     object.destroy({ useMasterKey: true }).then(destroyed => {
