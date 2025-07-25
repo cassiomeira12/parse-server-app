@@ -21,6 +21,10 @@ const CredentialScheme = {
       type: "String",
       required: false,
     },
+    faviconUrl: {
+      ype: "String",
+      required: false,
+    },
     notes: {
       type: "String",
       required: false,
