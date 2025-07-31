@@ -9,7 +9,6 @@ app.all('*', async (req, res, next)  => {
   const endpoint = req.originalUrl;
   if (regex.test(endpoint)) {
     const endpointsToIgnore = [
-      '/parse/functions/public-rsa-key',
       // Dev test endpoints
       '/parse/functions/encrypt',
       '/parse/functions/decrypt',
@@ -47,6 +46,19 @@ app.get('/download_ios_app', async (req, res) => {
     res.redirect(301, url);
   } else {
     res.status(404).send('Download url not found');
+  }
+});
+
+app.get('/public-rsa-key', async (req, res) => {
+  const config = await Parse.Config.get({ useMasterKey: true });
+  const key = config.get('rsa_public_key');
+  if (key) {
+    const json = {
+      'result': key,
+    };
+    res.send(200, json);
+  } else {
+    res.status(404).send('Public RSA key not found');
   }
 });
 

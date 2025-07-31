@@ -2,12 +2,6 @@
 
 const crypto = require('crypto');
 
-Parse.Cloud.define('public-rsa-key', async (request) => {
-  const config = await Parse.Config.get({ useMasterKey: true });
-  const key = config.get('rsa_public_key');
-  return key;
-});
-
 Parse.Cloud.define('generate-key-pair', async (request) => {
   return generateRsaKeys();
 });
