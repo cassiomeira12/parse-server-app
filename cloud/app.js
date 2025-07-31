@@ -5,13 +5,9 @@ require('dotenv/config');
 const app = express();
 
 app.all('*', async (req, res, next)  => {
-  const origin = req.get('origin') || req.headers.origin;
-  const ignoreGetRequest = req.method !== 'GET';
-
-  // se origin for null e Get => ignore
-  // se origin for null e nor for Get => valida
-
-  if (ignoreGetRequest) {
+  const regex = /\/parse\/functions\//;
+  const endpoint = req.originalUrl;
+  if (regex.test(endpoint)) {
     const endpointsToIgnore = [
       '/parse/functions/public-rsa-key',
       // Dev test endpoints
@@ -19,7 +15,7 @@ app.all('*', async (req, res, next)  => {
       '/parse/functions/decrypt',
       '/parse/functions/dev-otp-code',
     ];
-    if (endpointsToIgnore.indexOf(req.originalUrl) === -1) {
+    if (endpointsToIgnore.indexOf(endpoint) === -1) {
       try {
         await validationOTPCode(req.headers);
       } catch (error) {
