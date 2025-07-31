@@ -14,6 +14,9 @@ app.all('*', async (req, res, next)  => {
   if (ignoreGetRequest) {
     const endpointsToIgnore = [
       '/parse/functions/public-rsa-key',
+      // Dev test endpoints
+      '/parse/functions/encrypt',
+      '/parse/functions/decrypt',
       '/parse/functions/dev-otp-code',
     ];
     if (endpointsToIgnore.indexOf(req.originalUrl) === -1) {
