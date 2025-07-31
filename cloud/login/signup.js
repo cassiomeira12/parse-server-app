@@ -1,4 +1,5 @@
 const { getUserData } = require('../user/user');
+const { decryptData } = require('../security/encrypt/encrypt');
 
 Parse.Cloud.define('signup', async (request) => {
   const { params } = request;
@@ -6,7 +7,7 @@ Parse.Cloud.define('signup', async (request) => {
   const name = params.name;
   const email = params.email;
   const username = params.username;
-  const password = params.password;
+  const password = await decryptData(params.password);
 
   const user = new Parse.Object("_User");
   user.set("name", name);
