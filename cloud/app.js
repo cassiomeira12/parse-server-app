@@ -7,7 +7,8 @@ const app = express();
 app.all('*', async (req, res, next)  => {
   const regex = /\/parse\/functions\//;
   const endpoint = req.originalUrl;
-  if (regex.test(endpoint)) {
+  const ignoreOptionsRequest = req.method !== 'OPTIONS';
+  if (ignoreOptionsRequest && regex.test(endpoint)) {
     const endpointsToIgnore = [
       // Dev test endpoints
       '/parse/functions/generate-key-pair',
