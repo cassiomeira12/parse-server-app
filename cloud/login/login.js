@@ -7,7 +7,7 @@ Parse.Cloud.define('login', async (request) => {
   const username = params.username;
   const password = await decryptData(params.password);
 
-  const ip = request.ip.replace('::ffff:','');
+  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
   const installationId = `${ip} ${request.installationId}`.toLowerCase();
 
   return await login(username, password, installationId);
@@ -17,13 +17,13 @@ Parse.Cloud.define('login', async (request) => {
 });
 
 Parse.Cloud.define("change-password", async (request) => {
-  const { params, user } = request;
+  const { params, user, headers } = request;
 
   const username = params.username;
   const password = await decryptData(params.password);
   const newPassword = await decryptData(params.newPassword);
 
-  const ip = request.ip.replace('::ffff:','');
+  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
   const installationId = `${ip} ${request.installationId}`.toLowerCase();
 
   const userLogged = await Parse.User.logIn(username, password, { installationId: installationId });

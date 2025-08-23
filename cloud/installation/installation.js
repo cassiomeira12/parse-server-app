@@ -1,9 +1,9 @@
 const { validationAdminRules } = require('../roles/validation_roles');
 
 Parse.Cloud.define('installation', async (request) => {
-  const { params, user } = request;
+  const { params, user, headers } = request;
 
-  const ip = request.ip.replace('::ffff:','');
+  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
   const deviceId = request.installationId;
   const deviceToken = params.deviceToken;
   const GCMSenderId = params.GCMSenderId;

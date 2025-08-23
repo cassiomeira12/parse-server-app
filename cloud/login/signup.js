@@ -2,7 +2,7 @@ const { getUserData } = require('../user/user');
 const { decryptData } = require('../security/encrypt/encrypt');
 
 Parse.Cloud.define('signup', async (request) => {
-  const { params } = request;
+  const { params, headers } = request;
 
   const name = params.name;
   const email = params.email;
@@ -17,7 +17,7 @@ Parse.Cloud.define('signup', async (request) => {
 
   await user.save(null, { useMasterKey: true });
 
-  const ip = request.ip.replace('::ffff:','');
+  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
   const installationId = `${ip} ${request.installationId}`.toLowerCase();
 
   const userLogged = await Parse.User.logIn(username, password, { installationId: installationId });

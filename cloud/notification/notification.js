@@ -113,13 +113,13 @@ Parse.Cloud.define('read-notification', async (request) => {
 });
 
 Parse.Cloud.define('test-push-notification', async (request) => {
-  const { params } = request;
+  const { params, headers } = request;
 
   const title = params.title;
   const body = params.body;
   const imageUrl = params.imageUrl;
 
-  const ip = request.ip.replace('::ffff:','');
+  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
 
   const installationId = `${ip} ${request.installationId}`.toLowerCase();
 
