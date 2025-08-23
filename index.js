@@ -90,12 +90,8 @@ const parseServer = new ParseServer(config);
 var app;
 try {
     app = require('./cloud/app');
-    app.enable('trust proxy');
-    app.set('trust proxy', true);
 } catch (_) {
     app = express();
-    app.enable('trust proxy');
-    app.set('trust proxy', true);
 }
 
 const projectPath = config.projectPath || __dirname;
@@ -197,6 +193,9 @@ app.all('*', (req, res, next) => {
         'error': 'unauthorized',
       });
     }
+  }
+  if (req.headers['ip'] === undefined) {
+    req.headers['ip'] = req.ip;
   }
   next();
 });
