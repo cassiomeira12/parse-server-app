@@ -7,6 +7,7 @@ const { TermsScheme, TermDefaultData } = require('./term');
 const { UserTermsScheme, UserTermDefaultData } = require('./user_term');
 const { PushNotificationScheme, PushNotificationDefaultData } = require('./push_notification');
 const { NotificationScheme, NotificationDefaultData } = require('./notification');
+const { WebsiteVisitHistoryScheme, WebsiteVisitHistoryDefaultData } = require('./website_visit_history');
 
 const schemes = [
   RoleScheme, // Default
@@ -18,6 +19,8 @@ const schemes = [
   // UserTermsScheme, // Default
   PushNotificationScheme, // Default
   NotificationScheme, // Default
+  WebsiteVisitHistoryScheme, // Default
+  //
 ];
 
 const defaultData = [
@@ -30,6 +33,8 @@ const defaultData = [
   // UserTermDefaultData, // Default
   PushNotificationDefaultData, // Default
   NotificationDefaultData, // Default
+  WebsiteVisitHistoryDefaultData, // Default
+  //
 ];
 
 module.exports = { schemes, defaultData };

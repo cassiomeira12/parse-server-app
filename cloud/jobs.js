@@ -2,6 +2,7 @@ const schedule = require('node-schedule');
 const { resolve } = require('path');
 const spawn = require('child_process').spawn;
 const dateFormat = require('dateformat');
+const axios = require('axios');
 
 // *    *    *    *    *    *
 // 1 second (0 - 59, OPTIONAL)
@@ -126,4 +127,63 @@ Parse.Cloud.job("restoreLastBackup", async (request) => {
   const backupsPath = resolve(__dirname + '/../../backups' + backupPath + `/${databaseName}`);
 
   spawn('mongorestore', [`--uri="${databaseUri}"`,'--drop', backupsPath]);
+});
+
+Parse.Cloud.job("website-visit", async (request) => {
+  const { params } = request;
+
+  const ip = params.ip;
+  const link = params.link;
+  const userAgent = params.userAgent;
+
+  const websiteVisit = new Parse.Object("WebsiteVisitHistory");
+  websiteVisit.set("website", link);
+  websiteVisit.set("ip", ip);
+  websiteVisit.set("userAgent", userAgent);
+
+  var acl = new Parse.ACL();
+  acl.setPublicReadAccess(false);
+  acl.setPublicWriteAccess(false);
+  acl.setRoleReadAccess("Admin", true);
+  acl.setRoleWriteAccess("Admin", true);
+
+  websiteVisit.setACL(acl);
+
+  try {
+    const response = await axios.get(`http://ip-api.com/json/${ip}`);
+
+    const data = response.data;
+
+    const country = data.country;
+    const countryCode = data.countryCode;
+    const region = data.region;
+    const regionName = data.regionName;
+    const city = data.city;
+    const zip = data.zip;
+    const lat = data.lat;
+    const lon = data.lon;
+    const timezone = data.timezone;
+    const isp = data.isp;
+    const org = data.org;
+    const as = data.as;
+    const ipFormatted = data.query;
+
+    websiteVisit.set("ip", ipFormatted);
+    websiteVisit.set("country", country);
+    websiteVisit.set("countryCode", countryCode);
+    websiteVisit.set("region", region);
+    websiteVisit.set("regionName", regionName);
+    websiteVisit.set("city", city);
+    websiteVisit.set("zip", zip);
+    websiteVisit.set("lat", lat);
+    websiteVisit.set("lon", lon);
+    websiteVisit.set("timezone", timezone);
+    websiteVisit.set("isp", isp);
+    websiteVisit.set("org", org);
+    websiteVisit.set("as", as);
+  } catch (error) {
+    console.error('Error fetching data:', error.message);
+  }
+
+  await websiteVisit.save(null, { useMasterKey: true });
 });
