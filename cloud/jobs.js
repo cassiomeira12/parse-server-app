@@ -145,7 +145,7 @@ Parse.Cloud.job("website-visit", async (request) => {
   acl.setPublicReadAccess(false);
   acl.setPublicWriteAccess(false);
   acl.setRoleReadAccess("Admin", true);
-  acl.setRoleWriteAccess("Admin", true);
+  acl.setRoleWriteAccess("Admin", false);
 
   websiteVisit.setACL(acl);
 
