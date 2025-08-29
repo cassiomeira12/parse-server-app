@@ -103,6 +103,34 @@ Parse.Cloud.job("createDefaultData", async (request) => {
       }
     }));
   }));
+
+  const config = await Parse.Config.get({ useMasterKey: true });
+
+  const secret = config.get('otp_secret');
+  if (secret === undefined) {
+    const response = await Parse.Cloud.run('generate-otp-secret', null, { useMasterKey: true });
+    const otpSecret = response;
+    await Parse.Config.save(
+      {
+        otp_secret: otpSecret,
+      },
+      { useMasterKey: true }
+    );
+  }
+
+  const rsaPublicKey = config.get('rsa_public_key');
+  if (rsaPublicKey === undefined) {
+    const response = await Parse.Cloud.run('generate-key-pair', null, { useMasterKey: true });
+    const publicKeyBase64 = response['publicKeyBase64'];
+    const privateKeyBase64 = response['privateKeyBase64'];
+    await Parse.Config.save(
+      {
+        rsa_public_key: publicKeyBase64,
+        rsa_private_key: privateKeyBase64,
+      },
+      { useMasterKey: true }
+    );
+  }
 });
 
 Parse.Cloud.job("backupDatabase", async (request) => {
