@@ -8,10 +8,11 @@ app.all('*', async (req, res, next)  => {
   const regex = /\/parse\/functions\//;
   const endpoint = req.originalUrl;
   const ignoreOptionsRequest = req.method !== 'OPTIONS';
-  if (ignoreOptionsRequest && regex.test(endpoint)) {
+  if (ignoreOptionsRequest && (regex.test(endpoint) || endpoint == '/graphql')) {
     const endpointsToIgnore = [
       // Dev test endpoints
       '/parse/functions/generate-key-pair',
+      '/parse/functions/generate-otp-secret',
       '/parse/functions/encrypt',
       '/parse/functions/decrypt',
       '/parse/functions/dev-otp-code',
