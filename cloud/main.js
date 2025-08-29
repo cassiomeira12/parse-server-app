@@ -12,4 +12,8 @@ require('./web_visit_history/web_visit_history');
 require('./security/encrypt/encrypt');
 require('./security/otp/otp');
 
+require('./finance/account_bank');
+require('./finance/card_bank');
+require('./finance/transaction');
+
 module.exports.app = require('./app');
