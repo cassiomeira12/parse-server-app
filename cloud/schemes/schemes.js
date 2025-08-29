@@ -10,6 +10,13 @@ const { PushNotificationScheme, PushNotificationDefaultData } = require('./push_
 const { NotificationScheme, NotificationDefaultData } = require('./notification');
 const { WebsiteVisitHistoryScheme, WebsiteVisitHistoryDefaultData } = require('./website_visit_history');
 
+const { AccountBankScheme, AccountBankDefaultData } = require('./finance/account_bank');
+const { CardBankScheme, CardBankDefaultData } = require('./finance/card_bank');
+const { TransactionCategoryScheme, TransactionCategoryDefaultData } = require('./finance/transaction_category');
+const { TransactionSubCategoryScheme, TransactionSubCategoryDefaultData } = require('./finance/transaction_sub_category');
+const { TransactionTypeScheme, TransactionTypeDefaultData } = require('./finance/transaction_type');
+const { TransactionScheme, TransactionDefaultData } = require('./finance/transaction');
+
 const schemes = [
   RoleScheme, // Default
   InstallationScheme, // Default
@@ -23,6 +30,12 @@ const schemes = [
   NotificationScheme, // Default
   WebsiteVisitHistoryScheme, // Default
   //
+  AccountBankScheme,
+  CardBankScheme,
+  TransactionCategoryScheme,
+  TransactionSubCategoryScheme,
+  TransactionTypeScheme,
+  TransactionScheme,
 ];
 
 const defaultData = [
@@ -38,6 +51,12 @@ const defaultData = [
   NotificationDefaultData, // Default
   WebsiteVisitHistoryDefaultData, // Default
   //
+  AccountBankDefaultData,
+  CardBankDefaultData,
+  TransactionCategoryDefaultData,
+  TransactionSubCategoryDefaultData,
+  TransactionTypeDefaultData,
+  TransactionDefaultData,
 ];
 
 module.exports = { schemes, defaultData };
