@@ -12,4 +12,6 @@ require('./web_visit_history/web_visit_history');
 require('./security/encrypt/encrypt');
 require('./security/otp/otp');
 
+require('./work_point/work_point');
+
 module.exports.app = require('./app');
