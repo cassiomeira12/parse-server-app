@@ -10,6 +10,9 @@ const { PushNotificationScheme, PushNotificationDefaultData } = require('./push_
 const { NotificationScheme, NotificationDefaultData } = require('./notification');
 const { WebsiteVisitHistoryScheme, WebsiteVisitHistoryDefaultData } = require('./website_visit_history');
 
+const { WorkPointScheme, WorkPointDefaultData } = require('./work_point');
+const { WorkDayScheme, WorkDayDefaultData } = require('./work_day');
+
 const schemes = [
   RoleScheme, // Default
   InstallationScheme, // Default
@@ -23,6 +26,8 @@ const schemes = [
   NotificationScheme, // Default
   WebsiteVisitHistoryScheme, // Default
   //
+  WorkPointScheme,
+  WorkDayScheme,
 ];
 
 const defaultData = [
@@ -38,6 +43,8 @@ const defaultData = [
   NotificationDefaultData, // Default
   WebsiteVisitHistoryDefaultData, // Default
   //
+  WorkPointDefaultData,
+  WorkDayDefaultData
 ];
 
 module.exports = { schemes, defaultData };
