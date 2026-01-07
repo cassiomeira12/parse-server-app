@@ -13,4 +13,6 @@ require('./ip_address');
 require('./security/encrypt/encrypt');
 require('./security/otp/otp');
 
+require('./work_point/work_point');
+
 module.exports.app = require('./app');
