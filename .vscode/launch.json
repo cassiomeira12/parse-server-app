@@ -5,9 +5,10 @@
       "id": "env",
       "type": "pickString",
       "description": "Escolha o Environment a ser executado",
-      "default": ".env.workpoint",
+      "default": ".env.workpoint.dev",
       "options": [
         ".env.workpoint",
+        ".env.workpoint.dev"
       ]
     }
   ],
