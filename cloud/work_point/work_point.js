@@ -13,7 +13,6 @@ Parse.Cloud.define('registerPoint', async (request) => {
   workPoint.set("month", date.getMonth() + 1);
   workPoint.set("year", date.getFullYear());
   workPoint.set("time", dateFormat(date, 'HH:MM'));
-  workPoint.set("seconds", hoursInSeconds + minutesInSeconds);
   workPoint.set("manual", false);
   workPoint.set("deleted", false);
 
@@ -132,7 +131,6 @@ Parse.Cloud.define('updateWorkPoint', async (request) => {
       workPoint.set("month", month);
       workPoint.set("year", year);
       workPoint.set("time", formatTotalSeconds(seconds));
-      workPoint.set("seconds", seconds);
       workPoint.set("manual", true);
       workPoint.set("deleted", false);
 
@@ -367,6 +365,16 @@ Parse.Cloud.define('resumeWorkMonth', async (request) => {
 
 Parse.Cloud.beforeSave("WorkPoint", async (request) => {
   const { original, object, user } = request;
+
+  const time = object.get("time");
+  const hour = time.split(":")[0];
+  const minutes = time.split(":")[1];
+
+  const hoursInSeconds = hour * 60 * 60;
+  const minutesInSeconds = minutes * 60;
+  const seconds = hoursInSeconds + minutesInSeconds;
+
+  object.set("seconds", seconds);
 
   if (original === undefined) {
     var acl = new Parse.ACL();
