@@ -54,3 +54,39 @@ Parse.Cloud.define('pushNotification', async (request) => {
   fields: ['GCMSenderId', 'message'],
   requireUser: true
 });
+
+Parse.Cloud.define('addCredentialsKeys', async (request) => {
+  const { params } = request;
+
+  const firebaseProjectId = params.firebaseProjectId;
+  const firebaseProjectNumber = params.firebaseProjectNumber;
+  const clientEmail = params.clientEmail;
+  const privateKey = params.privateKey;
+
+  const projectIdConfigName = `projectId_${firebaseProjectNumber}`;
+  const emailConfigName = `email_${firebaseProjectNumber}`;
+  const privateKeyConfigName = `key_${firebaseProjectNumber}`;
+
+  const configKeys = {};
+  const masterKeyOnly = {};
+
+  configKeys[projectIdConfigName] = firebaseProjectId;
+  masterKeyOnly[projectIdConfigName] = true;
+
+  configKeys[emailConfigName] = clientEmail;
+  masterKeyOnly[emailConfigName] = true;
+
+  configKeys[privateKeyConfigName] = privateKey;
+  masterKeyOnly[privateKeyConfigName] = true;
+
+  const result = await Parse.Config.save(configKeys, masterKeyOnly);
+
+  Object.keys(configKeys).forEach(function(key, index) {
+    configKeys[key] = result['attributes'][key] != undefined;
+  });
+
+  return configKeys;
+}, validationAdminRules, {
+  fields: ['firebaseProjectId', 'firebaseProjectNumber', 'clientEmail', 'privateKey'],
+  requireUser: true
+});
