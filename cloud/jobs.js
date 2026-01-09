@@ -114,7 +114,9 @@ Parse.Cloud.job("createDefaultData", async (request) => {
       {
         otp_secret: otpSecret,
       },
-      { useMasterKey: true }
+      {
+        otp_secret: true,
+      },
     );
   }
 
@@ -128,7 +130,10 @@ Parse.Cloud.job("createDefaultData", async (request) => {
         rsa_public_key: publicKeyBase64,
         rsa_private_key: privateKeyBase64,
       },
-      { useMasterKey: true }
+      {
+        rsa_public_key: true,
+        rsa_private_key: true,
+      },
     );
   }
 });
