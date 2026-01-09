@@ -3,7 +3,6 @@ const { validationAdminRules } = require('../roles/validation_roles');
 Parse.Cloud.define('installation', async (request) => {
   const { params, user, headers } = request;
 
-  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
   const deviceId = request.installationId;
   const deviceToken = params.deviceToken;
   const GCMSenderId = params.GCMSenderId;
@@ -18,6 +17,7 @@ Parse.Cloud.define('installation', async (request) => {
   const localeIdentifier = params.localeIdentifier;
   const platform = params.platform;
 
+  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
   const installationId = `${ip} ${request.installationId}`.toLowerCase();
 
   const queryInstallation = new Parse.Query("_Installation");
@@ -84,6 +84,7 @@ Parse.Cloud.define('installation', async (request) => {
     currentInstallation.set("appVersion", appVersion);
     currentInstallation.set("timeZone", timeZone);
     currentInstallation.set("localeIdentifier", localeIdentifier);
+    currentInstallation.set("pushStatus", "INSTALLED");
 
     return await currentInstallation.save(null, { useMasterKey: true }).then((result) => {
       return {

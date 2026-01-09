@@ -247,14 +247,14 @@ Parse.Cloud.afterSave("PushNotification", async (request) => {
 
       const queryInstallation = new Parse.Query("_Installation");
       queryInstallation.equalTo('deviceToken', token);
-      const installations = await queryInstallation.find({ useMasterKey: true });
-      const installation = installations[0];
+      const installation = await queryInstallation.first({ useMasterKey: true });
 
-      if (error.message == 'NOT_FOUND') {
-        installation.set('pushStatus', 'UNINSTALLED');
+      if (installation !== undefined) {
+        if (error.message == 'APP_WAS_UNINSTALLED') {
+          installation.set('pushStatus', 'UNINSTALLED');
+          installation.save(null, { useMasterKey: true });
+        }
       }
-
-      installation.save(null, { useMasterKey: true });
     }
 
     object.save(null, { useMasterKey: true });
