@@ -41,7 +41,7 @@ const config = {
   "enableAnonymousUsers": false,
   "allowClientClassCreation": false,
   "allowExpiredAuthDataToken": false,
-  // "expireInactiveSessions": true,
+  "expireInactiveSessions": false, // Sessions has no expiration date
   // "sessionLength": 3600 * 24 * 15, // Session expires in 15 days
   "jsonLogs": true,
   "logsFolder": "./logs",
