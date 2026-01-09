@@ -9,15 +9,8 @@ Parse.Cloud.define('generate-key-pair', async (request) => {
 
 // Parse.Cloud.define('encrypt', async (request) => {
 //   const { params } = request;
-
 //   const data = params.data;
-
-//   const config = await Parse.Config.get({ useMasterKey: true });
-//   const key = config.get('rsa_public_key');
-
-//   const publicKey = nodeBase64.decode(key);
-
-//   return encryptData(data, publicKey);
+//   return await encryptData(data);
 // });
 
 // Parse.Cloud.define('decrypt', async (request) => {
@@ -44,9 +37,18 @@ function generateRsaKeys() {
   };
 }
 
-function encryptData(data, publicKey) {
-  const encrypted = crypto.publicEncrypt(publicKey, Buffer.from(data));
-  return encrypted.toString('base64');
+async function encryptData(data) {
+  try {
+    const config = await Parse.Config.get({ useMasterKey: true });
+    const key = config.get('rsa_public_key');
+
+    const publicKey = nodeBase64.decode(key);
+
+    const encrypted = crypto.publicEncrypt(publicKey, Buffer.from(data));
+    return encrypted.toString('base64');
+  } catch (error) {
+    throw 'Encrypt Data ' + error;
+  }
 }
 
 async function decryptData(data) {
