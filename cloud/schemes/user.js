@@ -12,6 +12,11 @@ const UserScheme = {
     locale: {
       type: "String",
       require: false,
+    },
+    pushTopics: {
+      type: "Array",
+      require: false,
+      defaultValue: []
     }
   },
   classLevelPermissions: {

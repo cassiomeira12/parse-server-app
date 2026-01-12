@@ -14,6 +14,7 @@ Parse.Cloud.define('signup', async (request) => {
   user.set("email", email);
   user.set("username", username);
   user.set("password", password);
+  user.set("pushTopics", []);
 
   await user.save(null, { useMasterKey: true });
 
