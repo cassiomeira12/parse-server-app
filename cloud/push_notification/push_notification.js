@@ -65,7 +65,15 @@ Parse.Cloud.define('subscribeTopic', async (request) => {
   const queryInstallation = new Parse.Query("_Installation");
   queryInstallation.equalTo("installationId", installationId);
   
-  const currentInstallation = await queryInstallation.first({ useMasterKey: true });
+  const queryUser = new Parse.Query("_User");
+
+  const responseResults = await Promise.all([
+    queryInstallation.first({ useMasterKey: true }),
+    queryUser.get(request.user.id, { useMasterKey: true })
+  ]);
+
+  const currentInstallation = responseResults[0];
+  const user = responseResults[1];
 
   if (currentInstallation === undefined) {
     throw 'device installation was not founded';
@@ -79,40 +87,18 @@ Parse.Cloud.define('subscribeTopic', async (request) => {
   }
 
   try {
-    const authToken = await authFirebasePushNotification(GCMSenderId);
-
-    await axios({
-      method: 'post',
-      url: `https://iid.googleapis.com/iid/v1/${deviceToken}/rel/topics/${topic}`,
-      headers: {
-        'Authorization': `Bearer ${authToken.access_token}`,
-        'access_token_auth': 'true'
-      }
-    });
-
-    const topicsResponse = await axios({
-      method: 'get',
-      url: `https://iid.googleapis.com/iid/info/${deviceToken}`,
-      params: {
-        'details': true,
-      },
-      headers: {
-        'Authorization': `Bearer ${authToken.access_token}`,
-        'access_token_auth': 'true'
-      }
-    });
-
-    const data = topicsResponse.data;
-    const topics = data['rel']['topics'];
-
-    const channels = [];
-
-    Object.keys(topics).forEach(function(key, index) {
-      channels.push(key);
-    });
+    const channels = await subscribeTopics(GCMSenderId, deviceToken, [topic]);
 
     currentInstallation.set('channels', channels);
     currentInstallation.save(null, { useMasterKey: true });
+
+    var pushTopics = user.get('pushTopics');
+    if (pushTopics == undefined) {
+      pushTopics = [];
+    }
+    pushTopics.push(topic);
+    user.set('pushTopics', pushTopics);
+    user.save(null, { useMasterKey: true });
 
     return channels;
   } catch (error) {
@@ -133,9 +119,17 @@ Parse.Cloud.define('unsubscribeTopic', async (request) => {
 
   const queryInstallation = new Parse.Query("_Installation");
   queryInstallation.equalTo("installationId", installationId);
-  
-  const currentInstallation = await queryInstallation.first({ useMasterKey: true });
 
+  const queryUser = new Parse.Query("_User");
+
+  const responseResults = await Promise.all([
+    queryInstallation.first({ useMasterKey: true }),
+    queryUser.get(request.user.id, { useMasterKey: true })
+  ]);
+
+  const currentInstallation = responseResults[0];
+  const user = responseResults[1];
+  
   if (currentInstallation === undefined) {
     throw 'device installation was not founded';
   }
@@ -183,6 +177,16 @@ Parse.Cloud.define('unsubscribeTopic', async (request) => {
     currentInstallation.set('channels', channels);
     currentInstallation.save(null, { useMasterKey: true });
 
+    var pushTopics = user.get('pushTopics');
+    if (pushTopics == undefined) {
+      pushTopics = [];
+    }
+
+    const pushTopicsUpdated = pushTopics.filter((pushTopic) => pushTopic !== topic);
+  
+    user.set('pushTopics', pushTopicsUpdated);
+    user.save(null, { useMasterKey: true });
+
     return channels;
   } catch (error) {
     throw error;
@@ -227,3 +231,45 @@ Parse.Cloud.define('addCredentialsKeys', async (request) => {
   fields: ['firebaseProjectId', 'firebaseProjectNumber', 'clientEmail', 'privateKey'],
   requireUser: true
 });
+
+const subscribeTopics = async (GCMSenderId, deviceToken, topics) => {
+  const authToken = await authFirebasePushNotification(GCMSenderId);
+
+  await Promise.all(
+    topics.map((topic) => {
+      return axios({
+        method: 'post',
+        url: `https://iid.googleapis.com/iid/v1/${deviceToken}/rel/topics/${topic}`,
+        headers: {
+          'Authorization': `Bearer ${authToken.access_token}`,
+          'access_token_auth': 'true'
+        }
+      });
+    }),
+  );
+
+  const topicsResponse = await axios({
+    method: 'get',
+    url: `https://iid.googleapis.com/iid/info/${deviceToken}`,
+    params: {
+      'details': true,
+    },
+    headers: {
+      'Authorization': `Bearer ${authToken.access_token}`,
+      'access_token_auth': 'true'
+    }
+  });
+
+  const pushTopicsSubscribed = [];
+  
+  const data = topicsResponse.data;
+  console.log(data);
+  
+  Object.keys(data['rel']['topics']).forEach(function(key, index) {
+    pushTopicsSubscribed.push(key);
+  });
+
+  return pushTopicsSubscribed;
+}
+
+module.exports = { subscribeTopics };

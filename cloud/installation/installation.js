@@ -1,7 +1,8 @@
 const { validationAdminRules } = require('../roles/validation_roles');
+const { subscribeTopics } = require('../push_notification/push_notification');
 
 Parse.Cloud.define('installation', async (request) => {
-  const { params, user, headers } = request;
+  const { params, headers } = request;
 
   const deviceId = request.installationId;
   const deviceToken = params.deviceToken;
@@ -23,9 +24,30 @@ Parse.Cloud.define('installation', async (request) => {
   const queryInstallation = new Parse.Query("_Installation");
   queryInstallation.equalTo("installationId", installationId);
   
-  const currentInstallation = await queryInstallation.first({ useMasterKey: true });
+  const queryUser = new Parse.Query("_User");
+
+  const responseResults = await Promise.all([
+    queryInstallation.first({ useMasterKey: true }),
+    queryUser.get(request.user.id, { useMasterKey: true })
+  ]);
+
+  const currentInstallation = responseResults[0];
+  const user = responseResults[1];
 
   if (currentInstallation === undefined) {
+    var pushTopicsSubscribed = [];
+  
+    const pushTopics = user.get('pushTopics');
+    
+    if (GCMSenderId !== undefined && deviceToken !== undefined && pushTopics.length > 0) {
+      try {
+        const topics = await subscribeTopics(GCMSenderId, deviceToken, pushTopics);
+        pushTopicsSubscribed = topics;
+      } catch (error) {
+        pushTopicsSubscribed = channels;
+      }
+    }
+
     const installation = new Parse.Object("_Installation");
     installation.set("installationId", installationId);
     installation.set("ip", ip);
@@ -37,7 +59,7 @@ Parse.Cloud.define('installation', async (request) => {
     installation.set("deviceType", deviceType);
     installation.set("deviceOsVersion", deviceOsVersion);
     installation.set("appName", appName);
-    installation.set("channels", channels);
+    installation.set("channels", pushTopicsSubscribed);
     installation.set("appVersion", appVersion);
     installation.set("timeZone", timeZone);
     installation.set("localeIdentifier", localeIdentifier);
