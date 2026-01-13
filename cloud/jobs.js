@@ -13,13 +13,19 @@ const axios = require('axios');
 // 6 day of week (0 - 7) (0 or 7 is Sun)
 
 // Schedule 23:59:45h every day
-schedule.scheduleJob('45 59 23 * * *', function () {
+// schedule.scheduleJob('45 59 23 * * *', function () {
+schedule.scheduleJob('clearOldSessions', {hour: 23, minute: 59, second: 45}, function() {
   Parse.Cloud.startJob("clearOldSessions");
 });
 
 // Schedule 23:59:59h every day
-schedule.scheduleJob('59 59 23 * * *', function () {
+// schedule.scheduleJob('59 59 23 * * *', function () {
+schedule.scheduleJob('backupDatabase', {hour: 23, minute: 59, second: 59}, function() {
   Parse.Cloud.startJob("backupDatabase");
+});
+
+Parse.Cloud.job("defaultProjectJob", async (request) => {
+  //
 });
 
 Parse.Cloud.job("clearOldSessions", async (request) => {
