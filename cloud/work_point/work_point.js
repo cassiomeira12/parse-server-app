@@ -738,6 +738,55 @@ Parse.Cloud.afterSave("WorkPointConfig", async (request) => {
   workDayConfigResponse.save(null, { sessionToken: user.getSessionToken() });
 });
 
+Parse.Cloud.job("startWorkPointSchedules", async (request) => {
+  const workPointConfigQuery = new Parse.Query("WorkPointConfig");
+  const pipeline = [
+    {
+      $group: {
+        _id: '$time',
+        weekDay: { $last: '$weekDay' },
+      },
+    }
+  ];
+
+  const results = await workPointConfigQuery.aggregate(pipeline);
+
+  const response = await Promise.all(
+    results.map(async (value) => {
+      const query = new Parse.Query("WorkPointConfig");
+      query.equalTo("time", value["objectId"]);
+      query.ascending("weekDay");
+      const result = await query.distinct("weekDay");
+      return {
+        "time": value["objectId"],
+        "weekDays": result,
+      };
+    }),
+  );
+
+  response.map((workPointConfig) => {
+    const time = workPointConfig['time'];
+    const hour = time.split(":")[0];
+    const minutes = time.split(":")[1];
+    const weekDays = workPointConfig['weekDays'];
+
+    const jobName = `work-point-push-[${weekDays}]-${hour}-${minutes}`;
+    console.log(`ScheduleJob ${jobName}`);
+
+    const rule = new schedule.RecurrenceRule();
+    rule.dayOfWeek = workPointConfig['weekDays'];
+    rule.hour = hour;
+    rule.minute = minutes;
+
+    schedule.scheduleJob(jobName, rule, function() {
+      const now = new Date();
+      console.log(`mandou push às ${now}`);
+    });
+  });
+
+  return schedule.scheduledJobs;
+});
+
 function formatWorkPoint(workPoint) {
   return {
     objectId: workPoint.id,

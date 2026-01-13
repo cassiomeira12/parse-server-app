@@ -35,7 +35,7 @@ schedule.scheduleJob('backupDatabase', {hour: 23, minute: 59, second: 59}, funct
 });
 
 Parse.Cloud.job("defaultProjectJob", async (request) => {
-  //
+  Parse.Cloud.startJob("startWorkPointSchedules");
 });
 
 Parse.Cloud.job("clearOldSessions", async (request) => {
