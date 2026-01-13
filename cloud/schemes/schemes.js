@@ -12,6 +12,8 @@ const { WebsiteVisitHistoryScheme, WebsiteVisitHistoryDefaultData } = require('.
 
 const { WorkPointScheme, WorkPointDefaultData } = require('./work_point');
 const { WorkDayScheme, WorkDayDefaultData } = require('./work_day');
+const { WorkDayConfigScheme, WorkDayConfigDefaultData } = require('./work_day_config');
+const { WorkPointConfigScheme, WorkPointConfigDefaultData } = require('./work_point_config');
 
 const schemes = [
   RoleScheme, // Default
@@ -28,6 +30,8 @@ const schemes = [
   //
   WorkPointScheme,
   WorkDayScheme,
+  WorkDayConfigScheme,
+  WorkPointConfigScheme,
 ];
 
 const defaultData = [
@@ -44,7 +48,9 @@ const defaultData = [
   WebsiteVisitHistoryDefaultData, // Default
   //
   WorkPointDefaultData,
-  WorkDayDefaultData
+  WorkDayDefaultData,
+  WorkDayConfigDefaultData,
+  WorkPointConfigDefaultData,
 ];
 
 module.exports = { schemes, defaultData };
