@@ -1,8 +1,17 @@
+const { validationAdminRules } = require('./roles/validation_roles');
 const schedule = require('node-schedule');
 const { resolve } = require('path');
 const spawn = require('child_process').spawn;
 const dateFormat = require('dateformat');
 const axios = require('axios');
+
+Parse.Cloud.define('scheduledJobs', async (request) => {
+  return Object.keys(schedule.scheduledJobs).map(function(key, index) {
+    return key;
+  });
+}, validationAdminRules, {
+  requireUser: true
+});
 
 // *    *    *    *    *    *
 // 1 second (0 - 59, OPTIONAL)

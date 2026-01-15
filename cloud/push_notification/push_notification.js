@@ -18,91 +18,111 @@ Parse.Cloud.define('pushNotification', async (request) => {
   const { params } = request;
 
   const GCMSenderId = params.GCMSenderId;
+  const token = params.message.token;
+  const topic = params.message.topic;
 
-  const authToken = await authFirebasePushNotification(GCMSenderId);
+  const pushNotification = new Parse.Object("PushNotification");
+  pushNotification.set("GCMSenderId", GCMSenderId);
+  pushNotification.set("messageId", null);
+  pushNotification.set("token", token);
+  pushNotification.set("topic", topic);
+  pushNotification.set("delivered", null);
 
-  const config = await Parse.Config.get({ useMasterKey: true });
-  const firebaseProjectId = config.get(`projectId_${GCMSenderId}`);
+  var acl = new Parse.ACL();
+  acl.setPublicReadAccess(false);
+  acl.setPublicWriteAccess(false);
+  // acl.setReadAccess(recipient.id, false);
+  // acl.setWriteAccess(recipient.id, false);
+  acl.setRoleReadAccess("Admin", true);
+  acl.setRoleWriteAccess("Admin", true);
 
-  try {
-    const response = await axios({
-      method: 'post',
-      url: `https://fcm.googleapis.com/v1/projects/${firebaseProjectId}/messages:send`,
-      data: {
-        'message': params.message,
-      },
-      headers: {
-        'Authorization': `Bearer ${authToken.access_token}`,
-        'Content-Type': 'application/json'
-      }
-    });
+  pushNotification.setACL(acl);
 
-    const messageId = response.data.name.replace(`projects/${firebaseProjectId}/messages/`, '');
+  const title = params.message.notification.title;
+  const body = params.message.notification.body;
+  const imageUrl = undefined;
+  const data = params.message.data;
 
-    return {
-      'messageId': messageId,
-    };
-  } catch (error) {
-    if (error.response.status === 404 || error.response === 'Not Found') {
-      throw 'APP_WAS_UNINSTALLED';
-    }
-    throw error;
-  }
+  const notificationData = {
+    'notification': {
+      'title': title,
+      'body': body
+    },
+    'image': imageUrl,
+    'data': data
+  };
 
+  pushNotification.set("data", JSON.stringify(notificationData));
+
+  const result = await pushNotification.save(null, { useMasterKey: true });
+
+  return result;
 }, validationAdminRules, {
   fields: ['GCMSenderId', 'message'],
   requireUser: true
 });
 
 Parse.Cloud.define('subscribeTopic', async (request) => {
-  const { params, headers } = request;
+  const { params } = request;
 
   const topic = params.topic;
+  const userId = request.user.id;
 
-  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
-  const installationId = `${ip} ${request.installationId}`.toLowerCase();
+  var installations = await Parse.Cloud.run(
+    'list-user-installations',
+    { 'userId': userId },
+    { useMasterKey: true }
+  );
 
-  const queryInstallation = new Parse.Query("_Installation");
-  queryInstallation.equalTo("installationId", installationId);
-  
-  const queryUser = new Parse.Query("_User");
+  installations = installations.filter((installation) => {
+    const pushStatus = installation.get("pushStatus");
+    const GCMSenderId = installation.get("GCMSenderId");
+    const deviceToken = installation.get("deviceToken");
+    return pushStatus === "INSTALLED" && GCMSenderId && deviceToken;
+  });
 
-  const responseResults = await Promise.all([
-    queryInstallation.first({ useMasterKey: true }),
-    queryUser.get(request.user.id, { useMasterKey: true })
-  ]);
-
-  const currentInstallation = responseResults[0];
-  const user = responseResults[1];
-
-  if (currentInstallation === undefined) {
+  if (installations.length === 0) {
     throw 'device installation was not founded';
   }
 
-  const GCMSenderId = currentInstallation.get("GCMSenderId");;
-  const deviceToken = currentInstallation.get("deviceToken");
+  const topics = await Promise.all(
+    installations.map(async (installation) => {
+      const GCMSenderId = installation.get("GCMSenderId");
+      const deviceToken = installation.get("deviceToken");
+      // const deviceToken = "dTPbX9_kTX6WW0iCJeNymT:APA91bGKQPieDhNeQESoQNfpkcWpYkm2HbdUNodjhP_u-V2f5aP6BQzE__W8Mb8TvvI8-rIobgC3XEBjrwrw4nn-_liTgwIrb-zMXiJ3Ci2x507GbXEJ-a8";
+      try {
+        const channels = await subscribeTopics(GCMSenderId, deviceToken, [topic]);
+        installation.set('channels', channels);
+        installation.save(null, { useMasterKey: true });
+        return true;
+      } catch (error) {
+        if (error.response.status === 404 || error.response["statusText"] === 'Not Found') {
+          installation.set('pushStatus', 'UNINSTALLED');
+          installation.save(null, { useMasterKey: true });
+        }
+        return false;
+      }
+    }),
+  );
 
-  if (deviceToken === undefined) {
-    throw 'device has no firebase push token';
-  }
-
-  try {
-    const channels = await subscribeTopics(GCMSenderId, deviceToken, [topic]);
-
-    currentInstallation.set('channels', channels);
-    currentInstallation.save(null, { useMasterKey: true });
+  if (topics.includes(true)) {
+    const queryUser = new Parse.Query("_User");
+    const user = await queryUser.get(userId, { useMasterKey: true });
 
     var pushTopics = user.get('pushTopics');
     if (pushTopics == undefined) {
       pushTopics = [];
     }
-    pushTopics.push(topic);
-    user.set('pushTopics', pushTopics);
-    user.save(null, { useMasterKey: true });
+    
+    if (pushTopics.includes(topic) === false) {
+      pushTopics.push(topic);
+      user.set('pushTopics', pushTopics);
+      user.save(null, { useMasterKey: true });
+    }
 
-    return channels;
-  } catch (error) {
-    throw error;
+    return pushTopics;
+  } else {
+    throw 'topic was not subscribed';
   }
 }, {
   fields: ['topic'],
@@ -110,72 +130,50 @@ Parse.Cloud.define('subscribeTopic', async (request) => {
 });
 
 Parse.Cloud.define('unsubscribeTopic', async (request) => {
-  const { params, headers } = request;
+  const { params } = request;
 
   const topic = params.topic;
+  const userId = request.user.id;
 
-  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
-  const installationId = `${ip} ${request.installationId}`.toLowerCase();
+  var installations = await Parse.Cloud.run(
+    'list-user-installations',
+    { 'userId': userId },
+    { useMasterKey: true }
+  );
 
-  const queryInstallation = new Parse.Query("_Installation");
-  queryInstallation.equalTo("installationId", installationId);
+  installations = installations.filter((installation) => {
+    const pushStatus = installation.get("pushStatus");
+    const GCMSenderId = installation.get("GCMSenderId");
+    const deviceToken = installation.get("deviceToken");
+    return pushStatus === "INSTALLED" && GCMSenderId && deviceToken;
+  });
 
-  const queryUser = new Parse.Query("_User");
-
-  const responseResults = await Promise.all([
-    queryInstallation.first({ useMasterKey: true }),
-    queryUser.get(request.user.id, { useMasterKey: true })
-  ]);
-
-  const currentInstallation = responseResults[0];
-  const user = responseResults[1];
-  
-  if (currentInstallation === undefined) {
+  if (installations.length === 0) {
     throw 'device installation was not founded';
   }
 
-  const GCMSenderId = currentInstallation.get("GCMSenderId");;
-  const deviceToken = currentInstallation.get("deviceToken");
-
-  if (deviceToken === undefined) {
-    throw 'device has no firebase push token';
-  }
-
-  try {
-    const authToken = await authFirebasePushNotification(GCMSenderId);
-
-    await axios({
-      method: 'delete',
-      url: `https://iid.googleapis.com/iid/v1/${deviceToken}/rel/topics/${topic}`,
-      headers: {
-        'Authorization': `Bearer ${authToken.access_token}`,
-        'access_token_auth': 'true'
+  const topics = await Promise.all(
+    installations.map(async (installation) => {
+      const GCMSenderId = installation.get("GCMSenderId");
+      const deviceToken = installation.get("deviceToken");
+      try {
+        const channels = await unSubscribeTopics(GCMSenderId, deviceToken, [topic]);
+        installation.set('channels', channels);
+        installation.save(null, { useMasterKey: true });
+        return true;
+      } catch (error) {
+        if (error.response.status === 404 || error.response["statusText"] === 'Not Found') {
+          installation.set('pushStatus', 'UNINSTALLED');
+          installation.save(null, { useMasterKey: true });
+        }
+        return false;
       }
-    });
+    }),
+  );
 
-    const topicsResponse = await axios({
-      method: 'get',
-      url: `https://iid.googleapis.com/iid/info/${deviceToken}`,
-      params: {
-        'details': true,
-      },
-      headers: {
-        'Authorization': `Bearer ${authToken.access_token}`,
-        'access_token_auth': 'true'
-      }
-    });
-
-    const data = topicsResponse.data;
-    const topics = data['rel']['topics'];
-
-    const channels = [];
-
-    Object.keys(topics).forEach(function(key, index) {
-      channels.push(key);
-    });
-
-    currentInstallation.set('channels', channels);
-    currentInstallation.save(null, { useMasterKey: true });
+  if (topics.includes(true)) {
+    const queryUser = new Parse.Query("_User");
+    const user = await queryUser.get(userId, { useMasterKey: true });
 
     var pushTopics = user.get('pushTopics');
     if (pushTopics == undefined) {
@@ -183,13 +181,13 @@ Parse.Cloud.define('unsubscribeTopic', async (request) => {
     }
 
     const pushTopicsUpdated = pushTopics.filter((pushTopic) => pushTopic !== topic);
-  
+
     user.set('pushTopics', pushTopicsUpdated);
     user.save(null, { useMasterKey: true });
 
-    return channels;
-  } catch (error) {
-    throw error;
+    return pushTopicsUpdated;
+  } else {
+    throw 'topic was not subscribed';
   }
 }, {
   fields: ['topic'],
@@ -232,6 +230,101 @@ Parse.Cloud.define('addCredentialsKeys', async (request) => {
   requireUser: true
 });
 
+Parse.Cloud.beforeSave("PushNotification", async (request) => {
+  const { original, object } = request;
+
+  const GCMSenderId = object.get("GCMSenderId");
+  const data = JSON.parse(object.get("data"));
+  const token = object.get("token");
+  const topic = object.get("topic");
+
+  if (original === undefined) {
+    var androidNotification = {
+      'sound': 'default',
+      'click_action': 'FLUTTER_NOTIFICATION_CLICK'
+    };
+
+    var appleNotification = {};
+
+    if (data.image) {
+      androidNotification['image'] = data.image;
+      appleNotification['image'] = data.image;
+    }
+
+    const notification = {
+      'GCMSenderId': GCMSenderId,
+      'message': {
+        // 'token': token,
+        // 'topic': topic,
+        'notification': data.notification,
+        'data': data.data,
+        'android': {
+          'notification': androidNotification
+        },
+        'apns': {
+          'payload': {
+            'aps': data.data
+          },
+          'fcm_options': appleNotification
+        }
+      }
+    };
+
+    if (token) {
+      notification.message['token'] = token;
+    }
+
+    if (topic) {
+      notification.message['topic'] = topic;
+    }
+
+    try {
+      const response = await pushNotification(notification);
+      const messageId = response['messageId'];
+
+      object.set('messageId', messageId);
+      object.set('delivered', true);
+    } catch (error) {
+      object.set('delivered', false);
+    }
+  }
+});
+
+const pushNotification = async (notification) => {
+  const GCMSenderId = notification.GCMSenderId;
+
+  const authToken = await authFirebasePushNotification(GCMSenderId);
+
+  const config = await Parse.Config.get({ useMasterKey: true });
+  const firebaseProjectId = config.get(`projectId_${GCMSenderId}`);
+
+  try {
+    const response = await axios({
+      method: 'post',
+      url: `https://fcm.googleapis.com/v1/projects/${firebaseProjectId}/messages:send`,
+      data: {
+        'message': notification.message,
+      },
+      headers: {
+        'Authorization': `Bearer ${authToken.access_token}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    const messageId = response.data.name.replace(`projects/${firebaseProjectId}/messages/`, '');
+
+    return {
+      'messageId': messageId,
+    };
+  } catch (error) {
+    console.error(error);
+    if (error.response.status === 404 || error.response === 'Not Found') {
+      throw 'APP_WAS_UNINSTALLED';
+    }
+    throw error;
+  }
+}
+
 const subscribeTopics = async (GCMSenderId, deviceToken, topics) => {
   const authToken = await authFirebasePushNotification(GCMSenderId);
 
@@ -263,7 +356,45 @@ const subscribeTopics = async (GCMSenderId, deviceToken, topics) => {
   const pushTopicsSubscribed = [];
   
   const data = topicsResponse.data;
-  console.log(data);
+  
+  Object.keys(data['rel']['topics']).forEach(function(key, index) {
+    pushTopicsSubscribed.push(key);
+  });
+
+  return pushTopicsSubscribed;
+}
+
+const unSubscribeTopics = async (GCMSenderId, deviceToken, topics) => {
+  const authToken = await authFirebasePushNotification(GCMSenderId);
+
+  await Promise.all(
+    topics.map((topic) => {
+      return axios({
+          method: 'delete',
+          url: `https://iid.googleapis.com/iid/v1/${deviceToken}/rel/topics/${topic}`,
+          headers: {
+            'Authorization': `Bearer ${authToken.access_token}`,
+            'access_token_auth': 'true'
+          }
+        });
+    }),
+  );
+
+  const topicsResponse = await axios({
+    method: 'get',
+    url: `https://iid.googleapis.com/iid/info/${deviceToken}`,
+    params: {
+      'details': true,
+    },
+    headers: {
+      'Authorization': `Bearer ${authToken.access_token}`,
+      'access_token_auth': 'true'
+    }
+  });
+
+  const pushTopicsSubscribed = [];
+  
+  const data = topicsResponse.data;
   
   Object.keys(data['rel']['topics']).forEach(function(key, index) {
     pushTopicsSubscribed.push(key);

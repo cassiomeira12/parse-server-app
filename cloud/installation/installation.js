@@ -34,20 +34,18 @@ Parse.Cloud.define('installation', async (request) => {
   const currentInstallation = responseResults[0];
   const user = responseResults[1];
 
-  if (currentInstallation === undefined) {
-    var pushTopicsSubscribed = [];
-  
-    const pushTopics = user.get('pushTopics');
-    
-    if (GCMSenderId !== undefined && deviceToken !== undefined && pushTopics.length > 0) {
-      try {
-        const topics = await subscribeTopics(GCMSenderId, deviceToken, pushTopics);
-        pushTopicsSubscribed = topics;
-      } catch (error) {
-        pushTopicsSubscribed = channels;
-      }
+  var pushTopicsSubscribed = [];
+  const pushTopics = user.get('pushTopics');
+  if (GCMSenderId && deviceToken && pushTopics.length > 0) {
+    try {
+      const topics = await subscribeTopics(GCMSenderId, deviceToken, pushTopics);
+      pushTopicsSubscribed = topics;
+    } catch (error) {
+      pushTopicsSubscribed = channels;
     }
+  }
 
+  if (currentInstallation === undefined) {
     const installation = new Parse.Object("_Installation");
     installation.set("installationId", installationId);
     installation.set("ip", ip);
@@ -102,7 +100,7 @@ Parse.Cloud.define('installation', async (request) => {
   } else {
     currentInstallation.set("deviceToken", deviceToken);
     currentInstallation.set("deviceOsVersion", deviceOsVersion);
-    currentInstallation.set("channels", channels);
+    currentInstallation.set("channels", pushTopicsSubscribed);
     currentInstallation.set("appVersion", appVersion);
     currentInstallation.set("timeZone", timeZone);
     currentInstallation.set("localeIdentifier", localeIdentifier);
