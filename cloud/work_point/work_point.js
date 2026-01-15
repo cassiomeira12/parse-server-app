@@ -361,14 +361,14 @@ Parse.Cloud.define('resumeWorkMonth', async (request) => {
   requireUser: true,
 });
 
-Parse.Cloud.define('workDayConfig', async (request) => {
+/* Parse.Cloud.define('workDayConfig', async (request) => {
   const { params, user } = request;
 
   const weekDay = params.weekDay;
 
   const workDayConfig = new Parse.Object("WorkDayConfig");
   workDayConfig.set("weekDay", weekDay);
-  workDayConfig.set("totalSeconds", 1);
+
   await workDayConfig.save(null, { sessionToken: user.getSessionToken() });
 
   const workDayConfigQuery = new Parse.Query("WorkDayConfig");
@@ -376,9 +376,7 @@ Parse.Cloud.define('workDayConfig', async (request) => {
 
   const weekDays = await workDayConfigQuery.find({ sessionToken: user.getSessionToken() });
 
-  return weekDays.filter((weekDay) => {
-    return weekDay.get("totalSeconds") > 0;
-  }).map((weekDay) => {
+  return weekDays.map((weekDay) => {
     return {
       objectId: weekDay.id,
       weekDay: weekDay.get("weekDay"),
@@ -390,7 +388,7 @@ Parse.Cloud.define('workDayConfig', async (request) => {
 }, {
   fields: ['weekDay'],
   requireUser: true,
-});
+}); */
 
 Parse.Cloud.define('workPointConfig', async (request) => {
   const { params, user } = request;
@@ -404,7 +402,6 @@ Parse.Cloud.define('workPointConfig', async (request) => {
   await workPointConfig.save(null, { sessionToken: user.getSessionToken() });
 
   const workDayConfigQuery = new Parse.Query("WorkDayConfig");
-  workDayConfigQuery.greaterThan("totalSeconds", 0);
   workDayConfigQuery.ascending("weekDay");
 
   const weekDays = await workDayConfigQuery.find({ sessionToken: user.getSessionToken() });
@@ -461,7 +458,6 @@ Parse.Cloud.define('listWorkPointsConfig', async (request) => {
   const { user } = request;
 
   const workDayConfigQuery = new Parse.Query("WorkDayConfig");
-  workDayConfigQuery.greaterThan("totalSeconds", 0);
   workDayConfigQuery.ascending("weekDay");
 
   const weekDays = await workDayConfigQuery.find({ sessionToken: user.getSessionToken() });
@@ -501,6 +497,18 @@ Parse.Cloud.beforeSave("WorkPoint", async (request) => {
   object.set("seconds", seconds);
 
   if (original === undefined) {
+    const workPointQuery = new Parse.Query("WorkPoint");
+    workPointQuery.equalTo("day", object.get("day"));
+    workPointQuery.equalTo("month", object.get("month"));
+    workPointQuery.equalTo("year", object.get("year"));
+    workPointQuery.equalTo("deleted", false);
+    workPointQuery.equalTo("time", time);
+    workPointQuery.equalTo("seconds", seconds);
+    const workPoint = await workPointQuery.first({ sessionToken: user.getSessionToken() });
+    if (workPoint != undefined) {
+      throw 'work_point_already_created';
+    }
+
     var acl = new Parse.ACL();
     acl.setPublicReadAccess(false);
     acl.setPublicWriteAccess(false);
@@ -510,6 +518,13 @@ Parse.Cloud.beforeSave("WorkPoint", async (request) => {
     acl.setRoleWriteAccess("Admin", true);
     
     object.setACL(acl);
+
+    sendPushNotification(
+      user.id,
+      'Ponto registrado',
+      `Seu ponto foi registrado às ${hour}:${minutes}h`,
+      'open-notification',
+    );
   }
 });
 
@@ -597,7 +612,6 @@ Parse.Cloud.beforeSave("WorkDayConfig", async (request) => {
   if (original === undefined && user != undefined) {
     const workDayConfigQuery = new Parse.Query("WorkDayConfig");
     workDayConfigQuery.equalTo("weekDay", object.get("weekDay"));
-    workDayConfigQuery.greaterThan("totalSeconds", 0);
 
     const workDayConfig = await workDayConfigQuery.first({ sessionToken: user.getSessionToken() });
 
@@ -624,6 +638,10 @@ Parse.Cloud.beforeSave("WorkPointConfig", async (request) => {
   const hour = time.split(":")[0];
   const minutes = time.split(":")[1];
 
+  if (original != undefined && original.get("time") === time) {
+    throw 'work-point-config-same-current';
+  }
+
   const hoursInSeconds = hour * 60 * 60;
   const minutesInSeconds = minutes * 60;
   const seconds = hoursInSeconds + minutesInSeconds;
@@ -632,58 +650,26 @@ Parse.Cloud.beforeSave("WorkPointConfig", async (request) => {
 
   object.set("seconds", seconds);
 
-  if (original == undefined) {
+  const workDayConfigQuery = new Parse.Query("WorkDayConfig");
+  workDayConfigQuery.equalTo("weekDay", weekDay);
+
+  var workDayConfigResponse = await workDayConfigQuery.first({ sessionToken: user.getSessionToken() });
+
+  if (workDayConfigResponse == undefined) {
+    const workDayConfig = new Parse.Object("WorkDayConfig");
+    workDayConfig.set("weekDay", weekDay);
+
+    workDayConfigResponse = await workDayConfig.save(null, { sessionToken: user.getSessionToken() });
+  }
+
+  if (original === undefined) {
     const workPointConfigQuery = new Parse.Query("WorkPointConfig");
     workPointConfigQuery.equalTo("weekDay", weekDay);
     workPointConfigQuery.equalTo("time", time);
     workPointConfigQuery.equalTo("seconds", seconds);
-
     const workPointConfig = await workPointConfigQuery.first({ sessionToken: user.getSessionToken() });
     if (workPointConfig != undefined) {
-      throw 'already_created_work_point_config';
-    }
-
-    const workDayConfigQuery = new Parse.Query("WorkDayConfig");
-    workDayConfigQuery.equalTo("weekDay", weekDay);
-    workDayConfigQuery.greaterThan("totalSeconds", 0);
-
-    const workDayConfigResponse = await workDayConfigQuery.first({ sessionToken: user.getSessionToken() });
-    if (workDayConfigResponse == undefined) {
-      const workDayConfig = new Parse.Object("WorkDayConfig");
-      workDayConfig.set("weekDay", weekDay);
-      workDayConfig.set("totalSeconds", 1);
-
-      await workDayConfig.save(null, { sessionToken: user.getSessionToken() });
-    } else {
-      const workPointsConfig = workDayConfigResponse.relation('workPointsConfig');
-      const workPointsConfigQuery = workPointsConfig.query();
-
-      var workPointsConfigResponse = await workPointsConfigQuery.find({ sessionToken: user.getSessionToken() });
-
-      workPointsConfigResponse.push(object);
-
-      workPointsConfigResponse.sort(function (a, b) {
-        return b.get("seconds") - a.get("seconds");
-      });
-
-      if (workPointsConfigResponse.length > 1) {
-        const allowToCalcTime = workPointsConfigResponse.length % 2 === 0;
-        if (!allowToCalcTime) {
-          workPointsConfigResponse = workPointsConfigResponse.slice(1);
-        }
-        var totalSeconds = 0;
-        for (let i = 0; i < workPointsConfigResponse.length; i += 2) {
-          const endWorkPoint = workPointsConfigResponse[i];
-          const beginWorkPoint = workPointsConfigResponse[i + 1];
-          const seconds = endWorkPoint.get('seconds') - beginWorkPoint.get('seconds');
-          totalSeconds = totalSeconds + seconds;
-        }
-        workDayConfigResponse.set("totalSeconds", totalSeconds);
-      } else {
-        workDayConfigResponse.set("totalSeconds", 1);
-      }
-
-      workDayConfigResponse.save(null, { sessionToken: user.getSessionToken() });
+      throw 'work_point_config_already_created';
     }
 
     var acl = new Parse.ACL();
@@ -695,30 +681,75 @@ Parse.Cloud.beforeSave("WorkPointConfig", async (request) => {
     acl.setRoleWriteAccess("Admin", true);
     
     object.setACL(acl);
-
-    const workPointScheduleQuery = new Parse.Query("WorkPointConfig");
-    workPointScheduleQuery.equalTo("weekDay", weekDay);
-    workPointScheduleQuery.equalTo("time", time);
-    workPointScheduleQuery.equalTo("seconds", seconds);
-
-    const workPointSchedule = await workPointScheduleQuery.first({ useMasterKey: true });
-    if (workPointSchedule != undefined) return;
-
-    const jobName = `work-point-push-[${weekDay}]-${hour}-${minutes}`;
-    console.log(`ScheduleJob ${jobName}`);
-
-    const rule = new schedule.RecurrenceRule();
-    rule.dayOfWeek = weekDay;
-    rule.hour = hour;
-    rule.minute = minutes;
-
-    schedule.scheduleJob(jobName, rule, function() {
-      const now = new Date();
-      console.log(`mandou push às ${now}`);
-    });
   } else {
-    //
+    const oldTime = original.get("time");
+    const oldHour = oldTime.split(":")[0];
+    const oldMinutes = oldTime.split(":")[1];
+    
+    const topic = `work-point-${weekDay}-${oldHour}-${oldMinutes}`;
+    Parse.Cloud.run('unsubscribeTopic', { 'topic': topic }, { sessionToken: user.getSessionToken() });
   }
+  
+  const topic = `work-point-${weekDay}-${hour}-${minutes}`;
+  Parse.Cloud.run('subscribeTopic', { 'topic': topic }, { sessionToken: user.getSessionToken() });
+
+  const workPointsConfig = workDayConfigResponse.relation('workPointsConfig');
+  const workPointsConfigQuery = workPointsConfig.query();
+  var workPointsConfigResponse = await workPointsConfigQuery.find({ sessionToken: user.getSessionToken() });
+
+  if (original != undefined) {
+    workPointsConfigResponse = workPointsConfigResponse.filter((workPoint) => {
+      return workPoint.id != original.id;
+    });
+  }
+
+  workPointsConfigResponse.push(object);
+
+  workPointsConfigResponse.sort(function (a, b) {
+    return b.get("seconds") - a.get("seconds");
+  });
+
+  if (workPointsConfigResponse.length > 1) {
+    const allowToCalcTime = workPointsConfigResponse.length % 2 === 0;
+    if (!allowToCalcTime) {
+      workPointsConfigResponse = workPointsConfigResponse.slice(1);
+    }
+    var totalSeconds = 0;
+    for (let i = 0; i < workPointsConfigResponse.length; i += 2) {
+      const endWorkPoint = workPointsConfigResponse[i];
+      const beginWorkPoint = workPointsConfigResponse[i + 1];
+      const seconds = endWorkPoint.get('seconds') - beginWorkPoint.get('seconds');
+      totalSeconds = totalSeconds + seconds;
+    }
+    workDayConfigResponse.set("totalSeconds", totalSeconds);
+  } else {
+    workDayConfigResponse.set("totalSeconds", 0);
+  }
+  workDayConfigResponse.save(null, { sessionToken: user.getSessionToken() });
+
+  const workPointScheduleQuery = new Parse.Query("WorkPointConfig");
+  workPointScheduleQuery.equalTo("weekDay", weekDay);
+  workPointScheduleQuery.equalTo("time", time);
+  workPointScheduleQuery.equalTo("seconds", seconds);
+
+  const workPointSchedule = await workPointScheduleQuery.first({ useMasterKey: true });
+  if (workPointSchedule != undefined) return;
+
+  const jobName = `work-point-push-[${weekDay}]-${hour}-${minutes}`;
+
+  const rule = new schedule.RecurrenceRule();
+  rule.dayOfWeek = weekDay;
+  rule.hour = hour;
+  rule.minute = minutes;
+
+  schedule.scheduleJob(jobName, rule, function() {
+    sendPushNotification(
+      `work-point-${weekDay}-${hour}-${minutes}`,
+      'Hora do ponto',
+      `Registre seu ponto das ${hour}:${minutes}h`,
+      'register-work-point',
+    );
+  });
 });
 
 Parse.Cloud.afterSave("WorkPointConfig", async (request) => {
@@ -728,7 +759,6 @@ Parse.Cloud.afterSave("WorkPointConfig", async (request) => {
 
   const workDayConfigQuery = new Parse.Query("WorkDayConfig");
   workDayConfigQuery.equalTo("weekDay", weekDay);
-  workDayConfigQuery.greaterThan("totalSeconds", 0);
 
   const workDayConfigResponse = await workDayConfigQuery.first({ sessionToken: user.getSessionToken() });
 
@@ -737,6 +767,17 @@ Parse.Cloud.afterSave("WorkPointConfig", async (request) => {
 
   workDayConfigResponse.save(null, { sessionToken: user.getSessionToken() });
 });
+
+// Parse.Cloud.afterDelete("WorkPointConfig", async (request) => {
+//   const { object, user } = request;
+
+//   const weekDay = object.get("weekDay");
+
+//   const workDayConfigQuery = new Parse.Query("WorkDayConfig");
+//   workDayConfigQuery.equalTo("weekDay", weekDay);
+
+//   var workDayConfigResponse = await workDayConfigQuery.first({ sessionToken: user.getSessionToken() });
+// });
 
 Parse.Cloud.job("startWorkPointSchedules", async (request) => {
   const workPointConfigQuery = new Parse.Query("WorkPointConfig");
@@ -780,11 +821,15 @@ Parse.Cloud.job("startWorkPointSchedules", async (request) => {
 
     schedule.scheduleJob(jobName, rule, function() {
       const now = new Date();
-      console.log(`mandou push às ${now}`);
+      const weekDay = now.getDay();
+      sendPushNotification(
+        `work-point-${weekDay}-${hour}-${minutes}`,
+        'Hora do ponto',
+        `Registre seu ponto das ${hour}:${minutes}h`,
+        'register-work-point',
+      );
     });
   });
-
-  return schedule.scheduledJobs;
 });
 
 function formatWorkPoint(workPoint) {
@@ -868,4 +913,47 @@ async function getWorkDay(date, user) {
     'hasInconsistency': !allowToCalcTime,
     'workPoints': workPoints,
   };
+}
+
+async function sendPushNotification(topic, title,  body, action) {
+  var notification = {
+    'title': title,
+    'body': body,
+  };
+
+  var androidNotification = {
+    'sound': 'default',
+    'click_action': 'FLUTTER_NOTIFICATION_CLICK'
+  };
+
+  var appleNotification = {};
+
+  // if (imageUrl) {
+  //   androidNotification['image'] = imageUrl;
+  //   appleNotification['image'] = imageUrl;
+  // }
+
+  var data = {
+    'action': action,
+  };
+
+  const message = {
+    'GCMSenderId': '1033466834500',
+    'message': {
+      'topic': topic,
+      'notification': notification,
+      'data': data,
+      'android': {
+        'notification': androidNotification
+      },
+      'apns': {
+        'payload': {
+          'aps': data,
+        },
+        'fcm_options': appleNotification
+      }
+    }
+  };
+
+  return await Parse.Cloud.run('pushNotification', message, { useMasterKey: true });
 }
