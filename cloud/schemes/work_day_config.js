@@ -40,29 +40,7 @@ const WorkDayConfigScheme = {
 
 const WorkDayConfigDefaultData = {
   "class": "WorkDayConfig",
-  "items": [
-    {
-      "weekDay": 0,
-    },
-    {
-      "weekDay": 1,
-    },
-    {
-      "weekDay": 2,
-    },
-    {
-      "weekDay": 3,
-    },
-    {
-      "weekDay": 4,
-    },
-    {
-      "weekDay": 5,
-    },
-    {
-      "weekDay": 6,
-    }
-  ],
+  "items": [],
 }
 
 module.exports = { WorkDayConfigScheme, WorkDayConfigDefaultData };
