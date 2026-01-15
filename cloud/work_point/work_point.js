@@ -830,6 +830,13 @@ Parse.Cloud.job("startWorkPointSchedules", async (request) => {
       );
     });
   });
+
+  const scheduledJobs = [];
+  Object.keys(schedule.scheduledJobs).map(function(key, index) {
+    scheduledJobs.push(key);
+  });
+
+  return (`${scheduledJobs}`);
 });
 
 function formatWorkPoint(workPoint) {
