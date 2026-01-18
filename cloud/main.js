@@ -1,5 +1,4 @@
 require('./installation/installation');
-require('./functions');
 require('./triggers');
 require('./user/user');
 require('./login/login');

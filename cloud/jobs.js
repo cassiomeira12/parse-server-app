@@ -4,6 +4,7 @@ const { resolve } = require('path');
 const spawn = require('child_process').spawn;
 const dateFormat = require('dateformat');
 const axios = require('axios');
+const { catchError } = require('./crashlytics');
 
 Parse.Cloud.define('scheduledJobs', async (request) => {
   return Object.keys(schedule.scheduledJobs).map(function(key, index) {
@@ -230,7 +231,7 @@ Parse.Cloud.job("website-visit", async (request) => {
     websiteVisit.set("org", org);
     websiteVisit.set("as", as);
   } catch (error) {
-    console.error('Error fetching data:', error.message);
+    catchError(error);
   }
 
   await websiteVisit.save(null, { useMasterKey: true });

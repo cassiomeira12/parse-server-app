@@ -1,6 +1,7 @@
 const { validationAdminRules } = require('../roles/validation_roles');
 const authFirebasePushNotification = require('./auth_firebase_push_notification');
 const axios = require('axios');
+const { catchError } = require('../crashlytics');
 
 Parse.Cloud.define('googleAuthToken', async (request) => {
   const { params } = request;
@@ -89,15 +90,16 @@ Parse.Cloud.define('subscribeTopic', async (request) => {
     installations.map(async (installation) => {
       const GCMSenderId = installation.get("GCMSenderId");
       const deviceToken = installation.get("deviceToken");
-      // const deviceToken = "dTPbX9_kTX6WW0iCJeNymT:APA91bGKQPieDhNeQESoQNfpkcWpYkm2HbdUNodjhP_u-V2f5aP6BQzE__W8Mb8TvvI8-rIobgC3XEBjrwrw4nn-_liTgwIrb-zMXiJ3Ci2x507GbXEJ-a8";
       try {
         const channels = await subscribeTopics(GCMSenderId, deviceToken, [topic]);
         installation.set('channels', channels);
         installation.save(null, { useMasterKey: true });
         return true;
       } catch (error) {
+        catchError(error);
         if (error.response.status === 404 || error.response["statusText"] === 'Not Found') {
           installation.set('pushStatus', 'UNINSTALLED');
+          installation.set('channels', []);
           installation.save(null, { useMasterKey: true });
         }
         return false;
@@ -162,8 +164,10 @@ Parse.Cloud.define('unsubscribeTopic', async (request) => {
         installation.save(null, { useMasterKey: true });
         return true;
       } catch (error) {
+        catchError(error);
         if (error.response.status === 404 || error.response["statusText"] === 'Not Found') {
           installation.set('pushStatus', 'UNINSTALLED');
+          installation.set('channels', []);
           installation.save(null, { useMasterKey: true });
         }
         return false;
@@ -285,6 +289,7 @@ Parse.Cloud.beforeSave("PushNotification", async (request) => {
       object.set('messageId', messageId);
       object.set('delivered', true);
     } catch (error) {
+      catchError(error);
       object.set('delivered', false);
     }
   }
@@ -317,7 +322,7 @@ const pushNotification = async (notification) => {
       'messageId': messageId,
     };
   } catch (error) {
-    console.error(error);
+    catchError(error);
     if (error.response.status === 404 || error.response === 'Not Found') {
       throw 'APP_WAS_UNINSTALLED';
     }
@@ -403,4 +408,4 @@ const unSubscribeTopics = async (GCMSenderId, deviceToken, topics) => {
   return pushTopicsSubscribed;
 }
 
-module.exports = { subscribeTopics };
+module.exports = { subscribeTopics, unSubscribeTopics };

@@ -1,5 +1,4 @@
 const { authenticator } = require('otplib');
-
 const { encryptData, decryptData } = require('../encrypt/encrypt');
 
 // Parse.Cloud.define('dev-otp-code', async (request) => {

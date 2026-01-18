@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const nodeBase64 = require('nodejs-base64-converter');
+const { catchError } = require('../../crashlytics');
 
 Parse.Cloud.define('generate-key-pair', async (request) => {
   return generateRsaKeys();
@@ -47,6 +48,7 @@ async function encryptData(data) {
     const encrypted = crypto.publicEncrypt(publicKey, Buffer.from(data));
     return encrypted.toString('base64');
   } catch (error) {
+    catchError(error);
     throw 'Encrypt Data ' + error;
   }
 }
@@ -61,6 +63,7 @@ async function decryptData(data) {
     const decrypted = crypto.privateDecrypt(privateKey, Buffer.from(data, 'base64'));
     return decrypted.toString();
   } catch (error) {
+    catchError(error);
     throw 'Decrypted Data ' + error;
   }
 }

@@ -1,3 +1,4 @@
+const Sentry = require("@sentry/node");
 const express = require('express');
 const { default: ParseServer, ParseGraphQLServer } = require('parse-server');
 const { path, resolve } = require('path');
@@ -224,10 +225,15 @@ app.all('*', (req, res, next) => {
 app.use(parseMount, parseServer.app);
 
 const parseGraphQLServer = new ParseGraphQLServer(
-  parseServer, { graphQLPath: '/graphql' }
+  parseServer,
+  { 
+    graphQLPath: '/graphql',
+    playgroundPath: '/playground'
+  }
 );
 
 parseGraphQLServer.applyGraphQL(app);
+parseGraphQLServer.applyPlayground(app);
 
 const server = http.createServer(app);
 
@@ -245,3 +251,9 @@ server.listen(process.env.PORT, function () {
 });
 
 ParseServer.createLiveQueryServer(server);
+
+Sentry.init({
+  dsn: process.env.CRASHLYTICS_SENTRY_DSN,
+  sendDefaultPii: true,
+  tracesSampleRate: 1.0,
+});

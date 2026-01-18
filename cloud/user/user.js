@@ -1,3 +1,5 @@
+const { catchError } = require('../crashlytics');
+
 Parse.Cloud.define('me', async (request) => {
   const { user } = request;
 
@@ -53,7 +55,9 @@ const getUserData = async (user) => {
   try {
     const permissionsRoles =  await getUserPermissions(userData);
     userJson['permissions'] = permissionsRoles;
-  } catch (error) {}
+  } catch (error) {
+    catchError(error);
+  }
 
   return userJson;
 }

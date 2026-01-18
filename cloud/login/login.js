@@ -1,5 +1,7 @@
 const { getUserData } = require('../user/user');
 const { decryptData } = require('../security/encrypt/encrypt');
+const { unSubscribeTopics } = require('../push_notification/push_notification');
+const { catchError } = require('../crashlytics');
 
 Parse.Cloud.define('login', async (request) => {
   const { params, headers } = request;
@@ -50,6 +52,55 @@ Parse.Cloud.define("change-password", async (request) => {
   fields: ['username', 'password', 'newPassword'],
   requireUser: true,
 });
+
+// Parse.Cloud.beforePasswordResetRequest(request => {
+//   if (request.object.get('banned')) {
+//     throw new Parse.Error(Parse.Error.EMAIL_NOT_FOUND, 'User is banned.');
+//   }
+// });
+
+// Parse.Cloud.beforeLogin(async request => {
+//   const { object: user }  = request;
+
+//   console.log(request);
+// });
+
+Parse.Cloud.afterLogout(async (request) => {
+  const { object: session, user }  = request;
+
+  const installationId = session.get('installationId');
+  const userTopics = user.get('pushTopics');
+
+  const queryInstallation = new Parse.Query("_Installation");
+  queryInstallation.equalTo("installationId", installationId);
+
+  const installation = await queryInstallation.first({ useMasterKey: true });
+
+  if (installation == undefined) {
+    return;
+  }
+
+  const GCMSenderId = installation.get("GCMSenderId");
+  const deviceToken = installation.get("deviceToken");
+
+  if (GCMSenderId && deviceToken) {
+    try {
+      const channels = await unSubscribeTopics(GCMSenderId, deviceToken, userTopics);
+      installation.set('channels', channels);
+      installation.save(null, { useMasterKey: true });
+      return true;
+    } catch (error) {
+      catchError(error);
+      if (error.response.status === 404 || error.response["statusText"] === 'Not Found') {
+        installation.set('pushStatus', 'UNINSTALLED');
+        installation.set('channels', []);
+        installation.save(null, { useMasterKey: true });
+      }
+      return false;
+    }
+  }
+});
+
 
 const login = async (username, password, installationId) => {
   const user = await Parse.User.logIn(username, password, { installationId: installationId });

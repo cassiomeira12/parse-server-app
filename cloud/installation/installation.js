@@ -1,5 +1,6 @@
 const { validationAdminRules } = require('../roles/validation_roles');
-const { subscribeTopics } = require('../push_notification/push_notification');
+const { subscribeTopics, unSubscribeTopics } = require('../push_notification/push_notification');
+const { catchError } = require('../crashlytics');
 
 Parse.Cloud.define('installation', async (request) => {
   const { params, headers } = request;
@@ -12,40 +13,30 @@ Parse.Cloud.define('installation', async (request) => {
   const deviceType = params.deviceType;
   const deviceOsVersion = params.deviceOsVersion;
   const appName = params.appName;
-  const channels = params.channels;
+  // const channels = params.channels;
   const appVersion = params.appVersion;
   const timeZone = params.timeZone;
   const localeIdentifier = params.localeIdentifier;
   const platform = params.platform;
+
+  var userPushTopics = [];
+  
+  if (request.user != undefined) {
+    const queryUser = new Parse.Query("_User");
+    const user = await queryUser.get(request.user.id, { useMasterKey: true });
+    const userTopics = user.get('pushTopics');
+    userTopics.map((topic) => userPushTopics.push(topic));
+  }
 
   const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
   const installationId = `${ip} ${request.installationId}`.toLowerCase();
 
   const queryInstallation = new Parse.Query("_Installation");
   queryInstallation.equalTo("installationId", installationId);
-  
-  const queryUser = new Parse.Query("_User");
 
-  const responseResults = await Promise.all([
-    queryInstallation.first({ useMasterKey: true }),
-    queryUser.get(request.user.id, { useMasterKey: true })
-  ]);
+  const currentInstallation = await queryInstallation.first({ useMasterKey: true });
 
-  const currentInstallation = responseResults[0];
-  const user = responseResults[1];
-
-  var pushTopicsSubscribed = [];
-  const pushTopics = user.get('pushTopics');
-  if (GCMSenderId && deviceToken && pushTopics.length > 0) {
-    try {
-      const topics = await subscribeTopics(GCMSenderId, deviceToken, pushTopics);
-      pushTopicsSubscribed = topics;
-    } catch (error) {
-      pushTopicsSubscribed = channels;
-    }
-  }
-
-  if (currentInstallation === undefined) {
+  if (currentInstallation == undefined) {
     const installation = new Parse.Object("_Installation");
     installation.set("installationId", installationId);
     installation.set("ip", ip);
@@ -57,7 +48,7 @@ Parse.Cloud.define('installation', async (request) => {
     installation.set("deviceType", deviceType);
     installation.set("deviceOsVersion", deviceOsVersion);
     installation.set("appName", appName);
-    installation.set("channels", pushTopicsSubscribed);
+    installation.set("channels", userPushTopics);
     installation.set("appVersion", appVersion);
     installation.set("timeZone", timeZone);
     installation.set("localeIdentifier", localeIdentifier);
@@ -67,13 +58,15 @@ Parse.Cloud.define('installation', async (request) => {
     var acl = new Parse.ACL();
     acl.setPublicReadAccess(false);
     acl.setPublicWriteAccess(false);
-    acl.setReadAccess(user.id, true);
-    acl.setWriteAccess(user.id, true);
+    if (request.user != undefined) {
+      acl.setReadAccess(request.user.id, true);
+      acl.setWriteAccess(request.user.id, true);
+    }
     acl.setRoleReadAccess("Admin", true);
     acl.setRoleWriteAccess("Admin", true);
     
     installation.setACL(acl);
-
+    
     return await installation.save(null, { useMasterKey: true }).then((result) => {
       return {
         objectId: result.id,
@@ -100,11 +93,47 @@ Parse.Cloud.define('installation', async (request) => {
   } else {
     currentInstallation.set("deviceToken", deviceToken);
     currentInstallation.set("deviceOsVersion", deviceOsVersion);
-    currentInstallation.set("channels", pushTopicsSubscribed);
     currentInstallation.set("appVersion", appVersion);
     currentInstallation.set("timeZone", timeZone);
     currentInstallation.set("localeIdentifier", localeIdentifier);
     currentInstallation.set("pushStatus", "INSTALLED");
+
+    var newTopics = [];
+    const currentTopics = currentInstallation.get("channels");
+
+    if (!currentTopics.includes(appIdentifier)) {
+      newTopics.push(appIdentifier);
+      newTopics.push(`${appIdentifier}_${appVersion}`);
+    }
+
+    userPushTopics.map((topic) => {
+      if (!currentTopics.includes(topic)) {
+        newTopics.push(topic);
+      }
+    });
+
+    if (newTopics.length > 0) {
+      try {
+        const topics = await subscribeTopics(GCMSenderId, deviceToken, newTopics);
+        newTopics = topics;
+      } catch (error) {
+        catchError(error);
+        newTopics = currentTopics;
+      }
+      currentInstallation.set("channels", newTopics);
+    }
+
+    var acl = new Parse.ACL();
+    acl.setPublicReadAccess(false);
+    acl.setPublicWriteAccess(false);
+    if (request.user != undefined) {
+      acl.setReadAccess(request.user.id, true);
+      acl.setWriteAccess(request.user.id, true);
+    }
+    acl.setRoleReadAccess("Admin", true);
+    acl.setRoleWriteAccess("Admin", true);
+    
+    currentInstallation.setACL(acl);
 
     return await currentInstallation.save(null, { useMasterKey: true }).then((result) => {
       return {
@@ -142,7 +171,6 @@ Parse.Cloud.define('installation', async (request) => {
     'localeIdentifier',
     'platform',
   ],
-  requireUser: true
 });
 
 Parse.Cloud.define('list-user-installations', async (request) => {
@@ -165,4 +193,55 @@ Parse.Cloud.define('list-user-installations', async (request) => {
 }, validationAdminRules, {
   fields: ['userId'],
   requireUser: true
+});
+
+Parse.Cloud.beforeSave("_Installation", async (request) => {
+  const { original, object } = request;
+
+  const GCMSenderId = object.get("GCMSenderId");
+  const deviceToken = object.get("deviceToken");
+  const appIdentifier = object.get("appIdentifier");
+  const appVersion = object.get("appVersion");
+  const channels = object.get("channels");
+
+  if (original === undefined) {
+    if (GCMSenderId && deviceToken) {
+      var pushTopics = [];
+
+      pushTopics.push(appIdentifier);
+      pushTopics.push(`${appIdentifier}_${appVersion}`);
+
+      channels.map((topic) => pushTopics.push(topic));
+
+      try {
+        const topics = await subscribeTopics(GCMSenderId, deviceToken, pushTopics);
+        pushTopics = topics;
+      } catch (error) {
+        catchError(error);
+        pushTopics = [];
+      }
+
+      object.set("channels", pushTopics);
+    }
+
+  } else {
+    if (GCMSenderId && deviceToken) {
+      const oldAppVersion = original.get("appVersion");
+      if (appVersion !== oldAppVersion) {
+        try {
+          const oldAppVersionTopic = `${appIdentifier}_${oldAppVersion}`
+          await unSubscribeTopics(GCMSenderId, deviceToken, [oldAppVersionTopic]);
+        } catch (error) {
+          catchError(error);
+        }
+        try {
+          const newAppVersionTopic = `${appIdentifier}_${appVersion}`
+          const topics = await subscribeTopics(GCMSenderId, deviceToken, [newAppVersionTopic]);
+          object.set("channels", topics);
+        } catch (error) {
+          catchError(error);
+        }
+      }
+    }
+  }
 });
