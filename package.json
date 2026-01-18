@@ -9,6 +9,7 @@
   "license": "MIT",
   "main": "index.js",
   "dependencies": {
+    "@sentry/node": "10.34.0",
     "axios": "1.11.0",
     "cors": "2.8.5",
     "crypto": "1.0.1",
