@@ -91,6 +91,7 @@ Parse.Cloud.define('installation', async (request) => {
       };
     });
   } else {
+    currentInstallation.set("GCMSenderId", GCMSenderId);
     currentInstallation.set("deviceToken", deviceToken);
     currentInstallation.set("deviceOsVersion", deviceOsVersion);
     currentInstallation.set("appVersion", appVersion);
@@ -112,7 +113,7 @@ Parse.Cloud.define('installation', async (request) => {
       }
     });
 
-    if (newTopics.length > 0) {
+    if (GCMSenderId && deviceToken && newTopics.length > 0) {
       try {
         const topics = await subscribeTopics(GCMSenderId, deviceToken, newTopics);
         newTopics = topics;
