@@ -34,6 +34,45 @@ Parse.Cloud.define('deleteAccount', async (request) => {
   requireUser: true,
 });
 
+Parse.Cloud.beforeSave("_User", async (request) => {
+  const { original, object } = request;
+  
+  if (original === undefined) {
+    var acl = new Parse.ACL();
+    acl.setPublicReadAccess(false);
+    acl.setPublicWriteAccess(false);
+    acl.setRoleReadAccess("Admin", true);
+    acl.setRoleWriteAccess("Admin", true);
+    
+    object.setACL(acl);
+  }
+});
+
+Parse.Cloud.beforeDelete("_User", async (request) => {
+  const { object } = request;
+
+  const querySessions = new Parse.Query("_Session");
+  querySessions.equalTo("user", object.toPointer());
+  const sessions = await querySessions.find({ useMasterKey: true });
+  sessions.forEach(object => {
+    object.destroy({ useMasterKey: true });
+  });
+});
+
+Parse.Cloud.beforeSave("UserDeleted", async (request) => {
+  const { original, object, user } = request;
+  
+  if (original === undefined) {
+    var acl = new Parse.ACL();
+    acl.setPublicReadAccess(false);
+    acl.setPublicWriteAccess(false);
+    acl.setRoleReadAccess("Admin", true);
+    acl.setRoleWriteAccess("Admin", true);
+    
+    object.setACL(acl);
+  }
+});
+
 const getUserData = async (user) => {
   const userQuery = new Parse.Query("_User");
   userQuery.includeAll();
