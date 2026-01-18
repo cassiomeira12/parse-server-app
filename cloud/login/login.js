@@ -90,12 +90,13 @@ Parse.Cloud.afterLogout(async (request) => {
       installation.save(null, { useMasterKey: true });
       return true;
     } catch (error) {
-      catchError(error);
       if (error.response.status === 404 || error.response["statusText"] === 'Not Found') {
         installation.set('pushStatus', 'UNINSTALLED');
         installation.set('channels', []);
         installation.save(null, { useMasterKey: true });
+        return false;
       }
+      catchError(error);
       return false;
     }
   }

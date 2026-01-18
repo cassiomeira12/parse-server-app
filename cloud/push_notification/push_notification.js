@@ -96,12 +96,13 @@ Parse.Cloud.define('subscribeTopic', async (request) => {
         installation.save(null, { useMasterKey: true });
         return true;
       } catch (error) {
-        catchError(error);
         if (error.response.status === 404 || error.response["statusText"] === 'Not Found') {
           installation.set('pushStatus', 'UNINSTALLED');
           installation.set('channels', []);
           installation.save(null, { useMasterKey: true });
+          return false;
         }
+        catchError(error);
         return false;
       }
     }),
@@ -164,12 +165,13 @@ Parse.Cloud.define('unsubscribeTopic', async (request) => {
         installation.save(null, { useMasterKey: true });
         return true;
       } catch (error) {
-        catchError(error);
         if (error.response.status === 404 || error.response["statusText"] === 'Not Found') {
           installation.set('pushStatus', 'UNINSTALLED');
           installation.set('channels', []);
           installation.save(null, { useMasterKey: true });
+          return false;
         }
+        catchError(error);
         return false;
       }
     }),
@@ -322,10 +324,10 @@ const pushNotification = async (notification) => {
       'messageId': messageId,
     };
   } catch (error) {
-    catchError(error);
     if (error.response.status === 404 || error.response === 'Not Found') {
       throw 'APP_WAS_UNINSTALLED';
     }
+    catchError(error);
     throw error;
   }
 }

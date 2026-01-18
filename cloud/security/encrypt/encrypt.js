@@ -48,6 +48,9 @@ async function encryptData(data) {
     const encrypted = crypto.publicEncrypt(publicKey, Buffer.from(data));
     return encrypted.toString('base64');
   } catch (error) {
+    if (error.reason.includes('data too large for key size')) {
+      throw 'rsa_encoding_error_data_too_large';
+    }
     catchError(error);
     throw 'Encrypt Data ' + error;
   }
@@ -63,8 +66,11 @@ async function decryptData(data) {
     const decrypted = crypto.privateDecrypt(privateKey, Buffer.from(data, 'base64'));
     return decrypted.toString();
   } catch (error) {
+    if (error.reason.includes('oaep decoding error')) {
+      throw 'rsa_decoding_error';
+    }
     catchError(error);
-    throw 'Decrypted Data ' + error;
+    throw 'Decrypt Data ' + error;
   }
 }
 
