@@ -119,8 +119,7 @@ Parse.Cloud.define('test-push-notification', async (request) => {
   const body = params.body;
   const imageUrl = params.imageUrl;
 
-  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
-  const installationId = `${ip} ${request.installationId}`.toLowerCase();
+  const installationId = request.installationId;
 
   const queryInstallation = new Parse.Query("_Installation");
   queryInstallation.equalTo("installationId", installationId);

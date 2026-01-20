@@ -1,4 +1,5 @@
 const { GoogleToken } = require('gtoken');
+const { catchError } = require('../crashlytics');
 
 async function authFirebasePushNotification(GCMSenderId) {
   const config = await Parse.Config.get({ useMasterKey: true });
@@ -16,9 +17,15 @@ async function authFirebasePushNotification(GCMSenderId) {
     eagerRefreshThresholdMillis: 5 * 60 * 1000
   });
 
-  const token = await gtoken.getToken();
-
-  return token;
+  try {
+    const token = await gtoken.getToken();
+    return token;
+  } catch (error) {
+    if (error.code === 'ERR_OSSL_UNSUPPORTED') {
+      throw 'Incorrect Firebase Messaging Project';
+    }
+    catchError(error);
+  }
 }
 
 module.exports = authFirebasePushNotification;

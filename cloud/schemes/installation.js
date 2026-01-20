@@ -7,13 +7,17 @@ const InstallationScheme = {
     },
     deviceId: {
       type: "String",
-      required: true,
+      required: false,
     },
     platform: {
       type: "String",
       required: true,
     },
     deviceBrand: {
+      type: "String",
+      required: true,
+    },
+    deviceModel: {
       type: "String",
       required: true,
     },

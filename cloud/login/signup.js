@@ -16,10 +16,12 @@ Parse.Cloud.define('signup', async (request) => {
   user.set("password", password);
   user.set("pushTopics", []);
 
-  await user.save(null, { useMasterKey: true });
+  const userCreated = await user.save(null, { useMasterKey: true });
+  const userId = userCreated.id;
+  userCreated.set("pushTopics", [userId]);
+  await userCreated.save(null, { useMasterKey: true });
 
-  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
-  const installationId = `${ip} ${request.installationId}`.toLowerCase();
+  const installationId = request.installationId;
 
   const userLogged = await Parse.User.logIn(username, password, { installationId: installationId });
 

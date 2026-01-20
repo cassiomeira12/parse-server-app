@@ -5,19 +5,23 @@ const { catchError } = require('../crashlytics');
 Parse.Cloud.define('installation', async (request) => {
   const { params, headers } = request;
 
-  const deviceId = request.installationId;
-  const deviceToken = params.deviceToken;
-  const GCMSenderId = params.GCMSenderId;
+  const installationId = params.installationId;
+  const appName = params.appName;
+  const appVersion = params.appVersion;
   const appIdentifier = params.appIdentifier;
+  const GCMSenderId = params.GCMSenderId;
+  const deviceToken = params.deviceToken;
+  const pushType = params.pushType;
+  const deviceId = params.deviceId;
   const deviceBrand = params.deviceBrand;
+  const deviceModel = params.deviceModel;
   const deviceType = params.deviceType;
   const deviceOsVersion = params.deviceOsVersion;
-  const appName = params.appName;
-  // const channels = params.channels;
-  const appVersion = params.appVersion;
   const timeZone = params.timeZone;
   const localeIdentifier = params.localeIdentifier;
   const platform = params.platform;
+  
+  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
 
   var userPushTopics = [];
   
@@ -28,9 +32,6 @@ Parse.Cloud.define('installation', async (request) => {
     userTopics.map((topic) => userPushTopics.push(topic));
   }
 
-  const ip = (headers['ip'] ?? request.ip).replace('::ffff:','');
-  const installationId = `${ip} ${request.installationId}`.toLowerCase();
-
   const queryInstallation = new Parse.Query("_Installation");
   queryInstallation.equalTo("installationId", installationId);
 
@@ -39,21 +40,23 @@ Parse.Cloud.define('installation', async (request) => {
   if (currentInstallation == undefined) {
     const installation = new Parse.Object("_Installation");
     installation.set("installationId", installationId);
-    installation.set("ip", ip);
-    installation.set("deviceId", deviceId);
-    installation.set("deviceToken", deviceToken);
-    installation.set("GCMSenderId", GCMSenderId);
+    installation.set("appName", appName);
+    installation.set("appVersion", appVersion);
     installation.set("appIdentifier", appIdentifier);
+    installation.set("channels", userPushTopics);
+    installation.set("GCMSenderId", GCMSenderId);
+    installation.set("deviceToken", deviceToken);
+    installation.set("pushType", pushType);
+    installation.set("deviceId", deviceId);
     installation.set("deviceBrand", deviceBrand);
+    installation.set("deviceModel", deviceModel);
     installation.set("deviceType", deviceType);
     installation.set("deviceOsVersion", deviceOsVersion);
-    installation.set("appName", appName);
-    installation.set("channels", userPushTopics);
-    installation.set("appVersion", appVersion);
     installation.set("timeZone", timeZone);
     installation.set("localeIdentifier", localeIdentifier);
-    installation.set("pushStatus", "INSTALLED");
     installation.set("platform", platform);
+    installation.set("ip", ip);
+    installation.set("pushStatus", "INSTALLED");
 
     var acl = new Parse.ACL();
     acl.setPublicReadAccess(false);
@@ -71,30 +74,32 @@ Parse.Cloud.define('installation', async (request) => {
       return {
         objectId: result.id,
         installationId: result.get("installationId"),
-        ip: result.get("ip"),
-        deviceId: result.get("deviceId"),
-        deviceToken: result.get("deviceToken"),
-        GCMSenderId: result.get("GCMSenderId"),
+        appName: result.get("appName"),
+        appVersion: result.get("appVersion"),
         appIdentifier: result.get("appIdentifier"),
+        channels: result.get("channels"),
+        GCMSenderId: result.get("GCMSenderId"),
+        deviceToken: result.get("deviceToken"),
+        pushType: result.get("pushType"),
+        deviceId: result.get("deviceId"),
         deviceBrand: result.get("deviceBrand"),
+        deviceModel: result.get("deviceModel"),
         deviceType: result.get("deviceType"),
         deviceOsVersion: result.get("deviceOsVersion"),
-        appName: result.get("appName"),
-        channels: result.get("channels"),
-        appVersion: result.get("appVersion"),
         timeZone: result.get("timeZone"),
         localeIdentifier: result.get("localeIdentifier"),
-        pushStatus: result.get("pushStatus"),
         platform: result.get("platform"),
+        ip: result.get("ip"),
+        pushStatus: result.get("pushStatus"),
         createdAt: result.createdAt.toISOString(),
         updatedAt: result.updatedAt.toISOString(),
       };
     });
   } else {
+    currentInstallation.set("appVersion", appVersion);
     currentInstallation.set("GCMSenderId", GCMSenderId);
     currentInstallation.set("deviceToken", deviceToken);
     currentInstallation.set("deviceOsVersion", deviceOsVersion);
-    currentInstallation.set("appVersion", appVersion);
     currentInstallation.set("timeZone", timeZone);
     currentInstallation.set("localeIdentifier", localeIdentifier);
     currentInstallation.set("pushStatus", "INSTALLED");
@@ -140,21 +145,23 @@ Parse.Cloud.define('installation', async (request) => {
       return {
         objectId: result.id,
         installationId: result.get("installationId"),
-        ip: result.get("ip"),
-        deviceId: result.get("deviceId"),
-        deviceToken: result.get("deviceToken"),
-        GCMSenderId: result.get("GCMSenderId"),
+        appName: result.get("appName"),
+        appVersion: result.get("appVersion"),
         appIdentifier: result.get("appIdentifier"),
+        channels: result.get("channels"),
+        GCMSenderId: result.get("GCMSenderId"),
+        deviceToken: result.get("deviceToken"),
+        pushType: result.get("pushType"),
+        deviceId: result.get("deviceId"),
         deviceBrand: result.get("deviceBrand"),
+        deviceModel: result.get("deviceModel"),
         deviceType: result.get("deviceType"),
         deviceOsVersion: result.get("deviceOsVersion"),
-        appName: result.get("appName"),
-        channels: result.get("channels"),
-        appVersion: result.get("appVersion"),
         timeZone: result.get("timeZone"),
         localeIdentifier: result.get("localeIdentifier"),
-        pushStatus: result.get("pushStatus"),
         platform: result.get("platform"),
+        ip: result.get("ip"),
+        pushStatus: result.get("pushStatus"),
         createdAt: result.createdAt.toISOString(),
         updatedAt: result.updatedAt.toISOString(),
       };
@@ -162,13 +169,14 @@ Parse.Cloud.define('installation', async (request) => {
   }
 }, {
   fields: [
+    'installationId',
+    'appName',
+    'appVersion',
     'appIdentifier',
     'deviceBrand',
+    'deviceModel',
     'deviceType',
     'deviceOsVersion',
-    'appName',
-    'channels',
-    'appVersion',
     'localeIdentifier',
     'platform',
   ],
