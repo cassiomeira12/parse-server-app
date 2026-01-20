@@ -1,5 +1,6 @@
 const { RoleScheme, RoleDefaultData } = require('./role');
 const { InstallationScheme, InstallationDefaultData } = require('./installation');
+const { SessionScheme, SessionDefaultData } = require('./session');
 const { UserScheme, UserDefaultData } = require('./user');
 const { UserDeletedScheme, UserDeletedDefaultData } = require('./user_deleted');
 const { VersionAppScheme, VersionAppDefaultData } = require('./version_app');
@@ -12,6 +13,7 @@ const { WebsiteVisitHistoryScheme, WebsiteVisitHistoryDefaultData } = require('.
 const schemes = [
   RoleScheme, // Default
   InstallationScheme, // Default
+  SessionScheme, // Default
   UserScheme, // Default
   UserDeletedScheme, // Default
   VersionAppScheme, // Default
@@ -26,6 +28,7 @@ const schemes = [
 const defaultData = [
   RoleDefaultData, // Default
   InstallationDefaultData, // Default
+  SessionDefaultData, // Default
   UserDefaultData, // Default
   UserDeletedDefaultData, // Default
   VersionAppDefaultData, // Default
