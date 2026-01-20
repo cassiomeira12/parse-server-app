@@ -1,13 +1,15 @@
 const { authenticator } = require('otplib');
 const { encryptData, decryptData } = require('../encrypt/encrypt');
 
-// Parse.Cloud.define('dev-otp-code', async (request) => {
-//   const config = await Parse.Config.get({ useMasterKey: true });
-//   const secret = config.get('otp_secret');
-//   const code = authenticator.generate(secret);
-//   const encryptedCode = await encryptData(code);
-//   return encryptedCode;
-// });
+if (process.env.DEV_DEBUG === 'true') {
+  Parse.Cloud.define('dev-otp-code', async (request) => {
+    const config = await Parse.Config.get({ useMasterKey: true });
+    const secret = config.get('otp_secret');
+    const code = authenticator.generate(secret);
+    const encryptedCode = await encryptData(code);
+    return encryptedCode;
+  });
+}
 
 Parse.Cloud.define('generate-otp-secret', async (request) => {
   return authenticator.generateSecret();

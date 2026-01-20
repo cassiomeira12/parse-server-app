@@ -8,17 +8,21 @@ Parse.Cloud.define('generate-key-pair', async (request) => {
   return generateRsaKeys();
 });
 
-// Parse.Cloud.define('encrypt', async (request) => {
-//   const { params } = request;
-//   const data = params.data;
-//   return await encryptData(data);
-// });
+if (process.env.DEV_DEBUG === 'true') {
+  Parse.Cloud.define('encrypt', async (request) => {
+    const { params } = request;
+    const data = params.data;
+    return await encryptData(data);
+  });
+}
 
-// Parse.Cloud.define('decrypt', async (request) => {
-//   const { params } = request;
-//   const data = params.data;
-//   return await decryptData(data);
-// });
+if (process.env.DEV_DEBUG === 'true') {
+  Parse.Cloud.define('decrypt', async (request) => {
+    const { params } = request;
+    const data = params.data;
+    return await decryptData(data);
+  });
+}
 
 function generateRsaKeys() {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
