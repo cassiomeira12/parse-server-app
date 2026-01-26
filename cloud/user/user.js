@@ -1,4 +1,5 @@
 const { catchError } = require('../crashlytics');
+const { unSubscribeTopics } = require('../push_notification/push_notification');
 
 Parse.Cloud.define('me', async (request) => {
   const { user } = request;
@@ -14,7 +15,6 @@ Parse.Cloud.define('deleteAccount', async (request) => {
   const reason = params.reason;
 
   const userQuery = new Parse.Query("_User");
-  userQuery.includeAll();
   const userData = await userQuery.get(user.id, { useMasterKey: true });
 
   await userData.destroy({ useMasterKey: true });
@@ -48,12 +48,35 @@ Parse.Cloud.beforeSave("_User", async (request) => {
   }
 });
 
+// Parse.Cloud.afterSave("_User", async (request) => {
+//   const { object } = request;
+
+//   const userId = object.id;
+//   var pushTopics = object.get("pushTopics");
+
+//   if (pushTopics.length === 0 && !pushTopics.includes(userId)) {
+//     pushTopics.push(userId);
+//     object.set("pushTopics", pushTopics);
+//     object.save(null, { useMasterKey: true });
+//   }
+// });
+
 Parse.Cloud.beforeDelete("_User", async (request) => {
   const { object } = request;
 
   const querySessions = new Parse.Query("_Session");
   querySessions.equalTo("user", object.toPointer());
   const sessions = await querySessions.find({ useMasterKey: true });
+
+  const userTopics = user.get('pushTopics');
+
+  await Promise.all(
+    sessions.map((session) => {
+      const installationId = session.get('installationId');
+      return unSubscribeAllUserTopics(userTopics, installationId);
+    }),
+  );
+
   sessions.forEach(object => {
     object.destroy({ useMasterKey: true });
   });
@@ -75,7 +98,6 @@ Parse.Cloud.beforeSave("UserDeleted", async (request) => {
 
 const getUserData = async (user) => {
   const userQuery = new Parse.Query("_User");
-  userQuery.includeAll();
 
   const userData = await userQuery.get(user.id, { useMasterKey: true });
 
@@ -116,4 +138,36 @@ const getUserPermissions = async (user) => {
   });
 }
 
-module.exports = { getUserData };
+const unSubscribeAllUserTopics = async (userTopics, installationId) => {
+  const queryInstallation = new Parse.Query("_Installation");
+  queryInstallation.equalTo("installationId", installationId);
+
+  const installation = await queryInstallation.first({ useMasterKey: true });
+
+  if (installation == undefined) {
+    return;
+  }
+
+  const GCMSenderId = installation.get("GCMSenderId");
+  const deviceToken = installation.get("deviceToken");
+
+  if (GCMSenderId && deviceToken) {
+    try {
+      const channels = await unSubscribeTopics(GCMSenderId, deviceToken, userTopics);
+      installation.set('channels', channels);
+      installation.save(null, { useMasterKey: true });
+      return true;
+    } catch (error) {
+      if (error.response.status === 404 || error.response["statusText"] === 'Not Found') {
+        installation.set('pushStatus', 'UNINSTALLED');
+        installation.set('channels', []);
+        installation.save(null, { useMasterKey: true });
+        return false;
+      }
+      catchError(error);
+      return false;
+    }
+  }
+}
+
+module.exports = { getUserData, unSubscribeAllUserTopics };

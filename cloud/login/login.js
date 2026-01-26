@@ -1,10 +1,8 @@
-const { getUserData } = require('../user/user');
+const { getUserData, unSubscribeAllUserTopics } = require('../user/user');
 const { decryptData } = require('../security/encrypt/encrypt');
-const { unSubscribeTopics } = require('../push_notification/push_notification');
-const { catchError } = require('../crashlytics');
 
 Parse.Cloud.define('login', async (request) => {
-  const { params, headers } = request;
+  const { params } = request;
 
   const username = params.username;
   const password = await decryptData(params.password);
@@ -18,7 +16,7 @@ Parse.Cloud.define('login', async (request) => {
 });
 
 Parse.Cloud.define("change-password", async (request) => {
-  const { params, user, headers } = request;
+  const { params, user } = request;
 
   const username = params.username;
   const password = await decryptData(params.password);
@@ -57,10 +55,10 @@ Parse.Cloud.define("change-password", async (request) => {
 //   }
 // });
 
-// Parse.Cloud.beforeLogin(async request => {
+// Parse.Cloud.beforeLogin(async (request) => {
 //   const { object: user }  = request;
 
-//   console.log(request);
+//   // Check if user account blocked / suspended
 // });
 
 Parse.Cloud.afterLogout(async (request) => {
@@ -69,35 +67,7 @@ Parse.Cloud.afterLogout(async (request) => {
   const installationId = session.get('installationId');
   const userTopics = user.get('pushTopics');
 
-  const queryInstallation = new Parse.Query("_Installation");
-  queryInstallation.equalTo("installationId", installationId);
-
-  const installation = await queryInstallation.first({ useMasterKey: true });
-
-  if (installation == undefined) {
-    return;
-  }
-
-  const GCMSenderId = installation.get("GCMSenderId");
-  const deviceToken = installation.get("deviceToken");
-
-  if (GCMSenderId && deviceToken) {
-    try {
-      const channels = await unSubscribeTopics(GCMSenderId, deviceToken, userTopics);
-      installation.set('channels', channels);
-      installation.save(null, { useMasterKey: true });
-      return true;
-    } catch (error) {
-      if (error.response.status === 404 || error.response["statusText"] === 'Not Found') {
-        installation.set('pushStatus', 'UNINSTALLED');
-        installation.set('channels', []);
-        installation.save(null, { useMasterKey: true });
-        return false;
-      }
-      catchError(error);
-      return false;
-    }
-  }
+  unSubscribeAllUserTopics(userTopics, installationId);
 });
 
 const login = async (username, password, installationId) => {

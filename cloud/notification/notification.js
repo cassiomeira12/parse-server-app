@@ -191,7 +191,6 @@ Parse.Cloud.define('alert-admins', async (request) => {
 
   const queryRole = new Parse.Query("_Role");
   queryRole.equalTo("name", "Admin");
-  queryRole.includeAll();
 
   const role = await queryRole.first({ useMasterKey: true });
 
