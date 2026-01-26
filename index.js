@@ -162,18 +162,23 @@ const parseDashboard = new ParseDashboard({
   apps: [
     ...dashboardApps,
     {
-      'appName': process.env.APP_NAME,
-      'appId': process.env.APP_ID,
-      'masterKey': process.env.MASTER_KEY,
-      'serverURL': serverURL + parseMount,
-      'graphQLServerURL': graphQLServerURL,
-      'enableSecurityChecks': true,
-      'iconName': process.env.ICON,
-      'production': false
+      appName: process.env.APP_NAME,
+      appId: process.env.APP_ID,
+      masterKey: process.env.MASTER_KEY,
+      serverURL: process.env.PUBLIC_SERVER_URL,
+      graphQLServerURL: graphQLServerURL,
+      enableSecurityChecks: true,
+      iconName: process.env.ICON,
+      production: false
     }
   ],
+  users: usersDashboards.map((user) => {
+    return {
+      ...user,
+      apps: [ { appId: process.env.APP_ID } ]
+    };
+  }),
   iconsFolder: process.env.ICONS_FOLDER,
-  users: usersDashboards,
   useEncryptedPasswords: true,
   trustProxy: 1
 }, { allowInsecureHTTP: true });
@@ -228,12 +233,10 @@ const parseGraphQLServer = new ParseGraphQLServer(
   parseServer,
   { 
     graphQLPath: '/graphql',
-    playgroundPath: '/playground'
   }
 );
 
 parseGraphQLServer.applyGraphQL(app);
-parseGraphQLServer.applyPlayground(app);
 
 const server = http.createServer(app);
 
