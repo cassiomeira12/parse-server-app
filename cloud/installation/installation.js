@@ -102,6 +102,7 @@ Parse.Cloud.define('installation', async (request) => {
     currentInstallation.set("deviceOsVersion", deviceOsVersion);
     currentInstallation.set("timeZone", timeZone);
     currentInstallation.set("localeIdentifier", localeIdentifier);
+    currentInstallation.set("ip", ip);
     currentInstallation.set("pushStatus", "INSTALLED");
 
     var newTopics = [];
