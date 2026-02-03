@@ -5,12 +5,12 @@ const { path, resolve } = require('path');
 const http = require('http');
 const https = require('https');
 const fs = require('fs');
-
-require('dotenv/config');
-const ParseDashboard = require('parse-dashboard');
 const cors = require('cors');
 const helmet = require('helmet');
 
+require('dotenv/config');
+
+const ParseDashboard = require('parse-dashboard');
 const { schemes, defaultData } = require('./cloud/schemes/schemes');
 
 var databaseUri = process.env.DATABASE_URI || process.env.MONGODB_URI;
