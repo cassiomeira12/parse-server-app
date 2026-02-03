@@ -3,6 +3,8 @@ const express = require('express');
 const { default: ParseServer, ParseGraphQLServer } = require('parse-server');
 const { path, resolve } = require('path');
 const http = require('http');
+const https = require('https');
+const fs = require('fs');
 
 require('dotenv/config');
 const ParseDashboard = require('parse-dashboard');
@@ -231,12 +233,19 @@ app.use(parseMount, parseServer.app);
 
 const parseGraphQLServer = new ParseGraphQLServer(
   parseServer,
-  { 
+  {
     graphQLPath: '/graphql',
   }
 );
 
 parseGraphQLServer.applyGraphQL(app);
+
+// Certificates and credentials for HTTPS server
+// const credentials = {
+//   key: fs.readFileSync('privkey.pem'),
+//   cert: fs.readFileSync('fullchain.pem'),
+// }
+// const server = https.createServer(credentials, app);
 
 const server = http.createServer(app);
 
@@ -246,6 +255,7 @@ server.listen(process.env.PORT, function () {
   console.log('Parse Web App ' + serverURL + process.env.WEB_APP);
   console.log('Parse Public URL ' + process.env.PUBLIC_SERVER_URL);
   console.log(`REST API running on ${serverURL + parseMount}`);
+  console.log(`REST API Health ${serverURL + parseMount}/health`);
   console.log('GraphQL API running on ' + graphQLServerURL);
   console.log('Parse Dashboard running on ' + process.env.SERVER_URL + ':' + process.env.PORT + '/dashboard');
   console.log('Parse Web App Privacy Policy ' + process.env.SERVER_URL + ':' + process.env.PORT + '/privacy-policy');
