@@ -1,5 +1,6 @@
 const dateFormat = require('dateformat');
 const schedule = require('node-schedule');
+const { createPushMessageJson } = require('../push_notification/push_notification');
 
 Parse.Cloud.define('registerPoint', async (request) => {
   const { user } = request;
@@ -923,44 +924,17 @@ async function getWorkDay(date, user) {
 }
 
 async function sendPushNotification(topic, title,  body, action) {
-  var notification = {
-    'title': title,
-    'body': body,
-  };
-
-  var androidNotification = {
-    'sound': 'default',
-    'click_action': 'FLUTTER_NOTIFICATION_CLICK'
-  };
-
-  var appleNotification = {};
-
-  // if (imageUrl) {
-  //   androidNotification['image'] = imageUrl;
-  //   appleNotification['image'] = imageUrl;
-  // }
-
-  var data = {
-    'action': action,
-  };
-
-  const message = {
-    'GCMSenderId': '1033466834500',
-    'message': {
-      'topic': topic,
-      'notification': notification,
-      'data': data,
-      'android': {
-        'notification': androidNotification
-      },
-      'apns': {
-        'payload': {
-          'aps': data,
-        },
-        'fcm_options': appleNotification
-      }
-    }
-  };
-
+  const message = createPushMessageJson(
+    notification['title'],
+    notification['body'],
+    null,
+    '1033466834500',
+    null,
+    topic,
+    null,
+    action,
+    null,
+  );
+  
   return await Parse.Cloud.run('pushNotification', message, { useMasterKey: true });
 }
