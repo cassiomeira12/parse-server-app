@@ -925,8 +925,8 @@ async function getWorkDay(date, user) {
 
 async function sendPushNotification(topic, title,  body, action) {
   const message = createPushMessageJson(
-    notification['title'],
-    notification['body'],
+    title,
+    body,
     null,
     '1033466834500',
     null,
