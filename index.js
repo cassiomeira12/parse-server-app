@@ -7,6 +7,7 @@ const https = require('https');
 const fs = require('fs');
 const cors = require('cors');
 const helmet = require('helmet');
+const dateFormat = require('dateformat');
 
 require('dotenv/config');
 
@@ -22,6 +23,12 @@ if (!databaseUri) {
 const parseMount = process.env.PARSE_MOUNT;
 const serverURL = process.env.SERVER_URL + ':' + process.env.PORT;
 const graphQLServerURL = serverURL + '/graphql';
+
+const dateBR = new Date(new Date().toLocaleString('en', { timeZone: 'America/Sao_Paulo' }));
+const alertNotification = {
+  'title': process.env.APP_NAME,
+  'body': `O servidor reiniciou às ${dateFormat(dateBR, 'dd/mm HH:MM')}h`
+};
 
 const config = {
   appName: process.env.APP_NAME,
@@ -86,6 +93,7 @@ const config = {
     console.log('Parse server started');
     Parse.Cloud.startJob("createDefaultData", {"data": defaultData});
     Parse.Cloud.startJob("defaultProjectJob");
+    Parse.Cloud.run('alert-admins', alertNotification, { useMasterKey: true });
   }
 };
 

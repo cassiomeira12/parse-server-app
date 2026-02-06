@@ -245,47 +245,20 @@ Parse.Cloud.beforeSave("PushNotification", async (request) => {
   const topic = object.get("topic");
 
   if (original === undefined) {
-    var androidNotification = {
-      'sound': 'default',
-      'click_action': 'FLUTTER_NOTIFICATION_CLICK'
-    };
-
-    var appleNotification = {};
-
-    if (data.image) {
-      androidNotification['image'] = data.image;
-      appleNotification['image'] = data.image;
-    }
-
-    const notification = {
-      'GCMSenderId': GCMSenderId,
-      'message': {
-        // 'token': token,
-        // 'topic': topic,
-        'notification': data.notification,
-        'data': data.data,
-        'android': {
-          'notification': androidNotification
-        },
-        'apns': {
-          'payload': {
-            'aps': data.data
-          },
-          'fcm_options': appleNotification
-        }
-      }
-    };
-
-    if (token) {
-      notification.message['token'] = token;
-    }
-
-    if (topic) {
-      notification.message['topic'] = topic;
-    }
+    var message = createPushMessageJson(
+      data.notification['title'],
+      data.notification['body'],
+      null,
+      GCMSenderId,
+      token,
+      topic,
+      null,
+      data.data['action'],
+      null,
+    );
 
     try {
-      const response = await pushNotification(notification);
+      const response = await pushNotification(message);
       const messageId = response['messageId'];
 
       object.set('messageId', messageId);
@@ -410,4 +383,87 @@ const unSubscribeTopics = async (GCMSenderId, deviceToken, topics) => {
   return pushTopicsSubscribed;
 }
 
-module.exports = { subscribeTopics, unSubscribeTopics };
+const createPushMessageJson = (
+  title,
+  body,
+  imageUrl,
+  GCMSenderId,
+  token,
+  topic,
+  restrictPackageName,
+  action,
+  tag,
+) => {
+  // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages
+
+  if (token == undefined && topic == undefined) {
+    throw 'Error: token and topic null';
+  }
+
+  if (token != undefined && topic != undefined) {
+    throw 'Error: token or topic must be null';
+  }
+
+  const notification = {
+    'title': title,
+    'body': body,
+  };
+
+  const data = {
+    'action': action,
+  };
+
+  var androidNotification = {
+    'channel_id': 'push_notification',
+    'sound': 'default',
+    'click_action': 'FLUTTER_NOTIFICATION_CLICK',
+    'notification_priority': 'PRIORITY_HIGH',
+    'tag': tag, // replace notification when existing one in the notification drawer
+  };
+
+  var appleNotification = {};
+
+  if (imageUrl) {
+    androidNotification['image'] = imageUrl;
+    appleNotification['image'] = imageUrl;
+  }
+
+  var message = {
+    'data': data,
+    'notification': notification,
+    'android': {
+      // 'collapse_key": "5658586678087056",
+      'priority': 'high',
+      'restricted_package_name': restrictPackageName,
+      'notification': androidNotification,
+    },
+    'webpush': {
+      'data': data,
+      'notification': notification,
+    },
+    'apns': {
+      'headers': {
+        // 'apns-collapse-id': '5658586678087056'
+      },
+      'payload': {
+        'aps': data,
+      },
+      'fcm_options': appleNotification
+    },
+  };
+
+  if (token != undefined) {
+    message['token'] = token;
+  }
+
+  if (topic != undefined) {
+    message['topic'] = topic;
+  }
+
+  return {
+    'GCMSenderId': GCMSenderId,
+    'message': message,
+  };
+}
+
+module.exports = { subscribeTopics, unSubscribeTopics, createPushMessageJson };
