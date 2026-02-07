@@ -91,22 +91,23 @@ Parse.Cloud.define('test-push-notification', async (request) => {
     notification['body'] = body ?? 'You\'ll receive real-time account updates, security alerts, and other important information.';
   }
 
-  const message = createPushMessageJson(
-    notification['title'],
-    notification['body'],
-    null,
-    currentInstallation.get('GCMSenderId'),
-    currentInstallation.get('deviceToken'),
-    null,
-    currentInstallation.get('appIdentifier'),
-    'test_push_notification',
-    'test_push_notification',
-    false,
-  );
+  const message = {
+    'GCMSenderId': currentInstallation.get('GCMSenderId'),
+    'token': currentInstallation.get('deviceToken'),
+    'message': {
+      'notification': {
+        'title': notification['title'],
+        'body': notification['body']
+      },
+      'data': {
+        'action': 'test_push_notification',
+        'tag': 'test_push_notification',
+      }
+    }
+  };
 
   return await Parse.Cloud.run('pushNotification', message, { useMasterKey: true });
 }, {
-  fields: ['title', 'body'],
   requireUser: true
 });
 
@@ -135,18 +136,20 @@ Parse.Cloud.define('alert-admins', async (request) => {
     const installations = await queryInstallations.find({ useMasterKey: true });
 
     installations.map((installation) => {
-      const message = createPushMessageJson(
-        title,
-        body,
-        null,
-        installation.get('GCMSenderId'),
-        null,
-        user.id,
-        installation.get('appIdentifier'),
-        'admin-alert',
-        'admin-alert',
-        false,
-      );
+      const message = {
+        'GCMSenderId': installation.get('GCMSenderId'),
+        'topic': user.id,
+        'message': {
+          'notification': {
+            'title': title,
+            'body': body
+          },
+          'data': {
+            'action': 'admin-alert',
+            'tag': 'admin-alert',
+          }
+        }
+      };
 
       Parse.Cloud.run('pushNotification', message, { useMasterKey: true });
     });
