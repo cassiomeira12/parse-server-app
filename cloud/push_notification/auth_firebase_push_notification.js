@@ -25,7 +25,7 @@ async function authFirebasePushNotification(GCMSenderId) {
     saveGCMTokenLocally(gcmTokenName, token);
     return token;
   } catch (error) {
-    if (error.code === 'ERR_OSSL_UNSUPPORTED') {
+    if (error.code === 'ERR_OSSL_UNSUPPORTED' || error.message.includes('No key or keyFile set')) {
       throw 'Incorrect Firebase Messaging Project';
     }
     catchError(error);

@@ -19,8 +19,9 @@ Parse.Cloud.define('pushNotification', async (request) => {
   const { params } = request;
 
   const GCMSenderId = params.GCMSenderId;
-  const token = params.message.token;
-  const topic = params.message.topic;
+  const token = params.token;
+  const topic = params.topic;
+  const message = params.message;
 
   const pushNotification = new Parse.Object("PushNotification");
   pushNotification.set("GCMSenderId", GCMSenderId);
@@ -32,24 +33,22 @@ Parse.Cloud.define('pushNotification', async (request) => {
   var acl = new Parse.ACL();
   acl.setPublicReadAccess(false);
   acl.setPublicWriteAccess(false);
-  // acl.setReadAccess(recipient.id, false);
-  // acl.setWriteAccess(recipient.id, false);
   acl.setRoleReadAccess("Admin", true);
   acl.setRoleWriteAccess("Admin", true);
 
   pushNotification.setACL(acl);
 
-  const title = params.message.notification.title;
-  const body = params.message.notification.body;
-  const imageUrl = undefined;
-  const data = params.message.data;
+  const title = message.notification.title;
+  const body = message.notification.body;
+  const imageUrl = message.notification.imageUrl;
+  const data = message.data;
 
   const notificationData = {
     'notification': {
       'title': title,
-      'body': body
+      'body': body,
+      'imageUrl': imageUrl
     },
-    'image': imageUrl,
     'data': data
   };
 
@@ -61,6 +60,99 @@ Parse.Cloud.define('pushNotification', async (request) => {
 }, validationAdminRules, {
   fields: ['GCMSenderId', 'message'],
   requireUser: true
+});
+
+Parse.Cloud.define('test-push-notification', async (request) => {
+  const { params } = request;
+
+  const title = params.title;
+  const body = params.body;
+
+  const installationId = request.installationId;
+
+  const queryInstallation = new Parse.Query("_Installation");
+  queryInstallation.equalTo("installationId", installationId);
+  
+  const currentInstallation = await queryInstallation.first({ useMasterKey: true });
+
+  if (currentInstallation === undefined) {
+    throw 'Installation not found';
+  }
+
+  const locale = currentInstallation.get("localeIdentifier");
+
+  var notification = {
+    'title': title ?? 'Notificação push',
+    'body': body ?? 'Você receberá atualizações de conta em tempo real, alertas de segurança e outras informações importantes.'
+  };
+
+  if (locale === 'en_US') {
+    notification['title'] = title ?? 'Notification Push';
+    notification['body'] = body ?? 'You\'ll receive real-time account updates, security alerts, and other important information.';
+  }
+
+  const message = createPushMessageJson(
+    notification['title'],
+    notification['body'],
+    null,
+    currentInstallation.get('GCMSenderId'),
+    currentInstallation.get('deviceToken'),
+    null,
+    currentInstallation.get('appIdentifier'),
+    'test_push_notification',
+    'test_push_notification',
+    false,
+  );
+
+  return await Parse.Cloud.run('pushNotification', message, { useMasterKey: true });
+}, {
+  fields: ['title', 'body'],
+  requireUser: true
+});
+
+Parse.Cloud.define('alert-admins', async (request) => {
+  const { params } = request;
+
+  const title = params.title;
+  const body = params.body;
+
+  const queryRole = new Parse.Query("_Role");
+  queryRole.equalTo("name", "Admin");
+
+  const role = await queryRole.first({ useMasterKey: true });
+
+  const users = await role.get("users").query().find({ useMasterKey: true });
+
+  await Promise.all(users.map(async (user) => {
+    const querySessions = new Parse.Query("_Session");
+    const queryInstallations = new Parse.Query("_Installation");
+    queryInstallations.notEqualTo('deviceToken', null);
+    queryInstallations.notEqualTo('pushStatus', 'UNINSTALLED');
+    
+    querySessions.equalTo("user", user.toPointer());
+    queryInstallations.matchesKeyInQuery("installationId", "installationId", querySessions);
+  
+    const installations = await queryInstallations.find({ useMasterKey: true });
+
+    installations.map((installation) => {
+      const message = createPushMessageJson(
+        title,
+        body,
+        null,
+        installation.get('GCMSenderId'),
+        null,
+        user.id,
+        installation.get('appIdentifier'),
+        'admin-alert',
+        'admin-alert',
+        false,
+      );
+
+      Parse.Cloud.run('pushNotification', message, { useMasterKey: true });
+    });
+  }));
+}, {
+  fields: ['title', 'body'],
 });
 
 Parse.Cloud.define('subscribeTopic', async (request) => {
@@ -240,21 +332,32 @@ Parse.Cloud.beforeSave("PushNotification", async (request) => {
   const { original, object } = request;
 
   const GCMSenderId = object.get("GCMSenderId");
-  const data = JSON.parse(object.get("data"));
   const token = object.get("token");
   const topic = object.get("topic");
+  const notificationData = JSON.parse(object.get("data"));
+
+  const notification = notificationData.notification;
+
+  const title = notification.title;
+  const body = notification.body;
+  const imageUrl = notification.imageUrl;
+  const data = notificationData.data;
+  const action = data.action;
+  const tag = data.tag;
+  const persistent = data.persistent;
 
   if (original === undefined) {
     var message = createPushMessageJson(
-      data.notification['title'],
-      data.notification['body'],
-      null,
+      title,
+      body,
+      imageUrl,
       GCMSenderId,
       token,
-      topic,
+      topic,  
       null,
-      data.data['action'],
-      null,
+      action,
+      tag,
+      persistent,
     );
 
     try {
@@ -264,7 +367,9 @@ Parse.Cloud.beforeSave("PushNotification", async (request) => {
       object.set('messageId', messageId);
       object.set('delivered', true);
     } catch (error) {
-      catchError(error);
+      if (error !== 'Incorrect Firebase Messaging Project') {
+        catchError(error);
+      }
       object.set('delivered', false);
     }
   }
@@ -393,6 +498,7 @@ const createPushMessageJson = (
   restrictPackageName,
   action,
   tag,
+  persistentNotification,
 ) => {
   // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages
 
@@ -411,6 +517,7 @@ const createPushMessageJson = (
 
   const data = {
     'action': action,
+    'sticky': `${persistentNotification}`,
   };
 
   var androidNotification = {
@@ -419,6 +526,7 @@ const createPushMessageJson = (
     'click_action': 'FLUTTER_NOTIFICATION_CLICK',
     'notification_priority': 'PRIORITY_HIGH',
     'tag': tag, // replace notification when existing one in the notification drawer
+    'sticky': persistentNotification,
   };
 
   var appleNotification = {};
@@ -433,7 +541,6 @@ const createPushMessageJson = (
     'notification': notification,
     'android': {
       // 'collapse_key": "5658586678087056",
-      'priority': 'high',
       'restricted_package_name': restrictPackageName,
       'notification': androidNotification,
     },

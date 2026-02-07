@@ -1,5 +1,4 @@
 const { validationAdminRules } = require('../roles/validation_roles');
-const { createPushMessageJson } = require('../push_notification/push_notification');
 
 Parse.Cloud.define('add-notification', async (request) => {
   const { params } = request;
@@ -45,7 +44,7 @@ Parse.Cloud.define('add-notification', async (request) => {
     };
   });
 }, validationAdminRules, {
-  fields: ['userId', 'title', 'body'],
+  fields: ['userId', 'title', 'body', 'imageUrl', 'data'],
   requireUser: true
 });
 
@@ -113,97 +112,6 @@ Parse.Cloud.define('read-notification', async (request) => {
   requireUser: true
 });
 
-Parse.Cloud.define('test-push-notification', async (request) => {
-  const { params, headers } = request;
-
-  const title = params.title;
-  const body = params.body;
-  const imageUrl = params.imageUrl;
-
-  const installationId = request.installationId;
-
-  const queryInstallation = new Parse.Query("_Installation");
-  queryInstallation.equalTo("installationId", installationId);
-  
-  const currentInstallation = await queryInstallation.first({ useMasterKey: true });
-
-  if (currentInstallation === undefined) {
-    throw 'Installation not found';
-  }
-
-  const locale = currentInstallation.get("localeIdentifier");
-
-  var notification = {
-    'title': title ?? 'Notificação push',
-    'body': body ?? 'Você receberá atualizações de conta em tempo real, alertas de segurança e outras informações importantes.'
-  };
-
-  if (locale === 'en_US') {
-    notification['title'] = title ?? 'Notification Push';
-    notification['body'] = body ?? 'You\'ll receive real-time account updates, security alerts, and other important information.';
-  }
-
-  const message = createPushMessageJson(
-    notification['title'],
-    notification['body'],
-    imageUrl,
-    currentInstallation.get('GCMSenderId'),
-    currentInstallation.get('deviceToken'),
-    null,
-    currentInstallation.get('appIdentifier'),
-    'test_push_notification',
-    'test_push_notification',
-  );
-
-  return await Parse.Cloud.run('pushNotification', message, { useMasterKey: true });
-}, {
-  requireUser: true
-});
-
-Parse.Cloud.define('alert-admins', async (request) => {
-  const { params } = request;
-
-  const title = params.title;
-  const body = params.body;
-
-  const queryRole = new Parse.Query("_Role");
-  queryRole.equalTo("name", "Admin");
-
-  const role = await queryRole.first({ useMasterKey: true });
-
-  const users = await role.get("users").query().find({ useMasterKey: true });
-
-  await Promise.all(users.map(async (user) => {
-    const querySessions = new Parse.Query("_Session");
-    const queryInstallations = new Parse.Query("_Installation");
-    queryInstallations.notEqualTo('deviceToken', null);
-    queryInstallations.notEqualTo('pushStatus', 'UNINSTALLED');
-    
-    querySessions.equalTo("user", user.toPointer());
-    queryInstallations.matchesKeyInQuery("installationId", "installationId", querySessions);
-  
-    const installations = await queryInstallations.find({ useMasterKey: true });
-
-    installations.map((installation) => {
-      const message = createPushMessageJson(
-        title,
-        body,
-        null,
-        installation.get('GCMSenderId'),
-        null,
-        user.id,
-        installation.get('appIdentifier'),
-        'admin-alert',
-        'admin-alert',
-      );
-
-      Parse.Cloud.run('pushNotification', message, { useMasterKey: true });
-    });
-  }));
-}, {
-  fields: ['title', 'body']
-});
-
 Parse.Cloud.beforeSave("Notification", async (request) => {
   const { original, object } = request;
 
@@ -223,77 +131,53 @@ Parse.Cloud.beforeSave("Notification", async (request) => {
     if (installations.length == 0) {
       throw 'User has no installed App';
     }
+
+    const pushNotificationsRelation = object.relation('pushNotifications');
+    const notificationId = object.id;
+
+    await Promise.all(installations.map(async (installation) => {
+      const token = installation.get("deviceToken");
+      
+      const pushNotification = new Parse.Object("PushNotification");
+      pushNotification.set("GCMSenderId", installation.get("GCMSenderId"));
+      pushNotification.set("messageId", null);
+      pushNotification.set("token", token);
+      pushNotification.set("topic", null);
+      pushNotification.set("delivered", null);
+
+      var acl = new Parse.ACL();
+      acl.setPublicReadAccess(false);
+      acl.setPublicWriteAccess(false);
+      acl.setReadAccess(recipient.id, false);
+      acl.setWriteAccess(recipient.id, false);
+      acl.setRoleReadAccess("Admin", true);
+      acl.setRoleWriteAccess("Admin", true);
+      
+      pushNotification.setACL(acl);
+
+      const title = object.get('title');
+      const body = object.get('body');
+      const imageUrl = object.get('imageUrl') ?? undefined;
+      const data = object.get('data') !== undefined ? JSON.parse(object.get('data')) : undefined;
+
+      if (data !== undefined) {
+        data['notificationId'] = notificationId;
+      }
+
+      const notificationData = {
+        'notification': {
+          'title': title,
+          'body': body,
+          'imageUrl': imageUrl
+        },
+        'data': data
+      };
+
+      pushNotification.set("data", JSON.stringify(notificationData));
+
+      const result = await pushNotification.save(null, { useMasterKey: true });
+
+      pushNotificationsRelation.add(result);
+    }));
   }
-});
-
-Parse.Cloud.afterSave("Notification", async (request) => {
-  const { object } = request;
-
-  const pushNotificationsRelation = object.relation('pushNotifications');
-
-  const pushNotificationsQuery = pushNotificationsRelation.query();
-
-  const pushNotifications = await pushNotificationsQuery.find({ useMasterKey: true });
-
-  if (pushNotifications.length > 0) {
-    return;
-  }
-  
-  const notificationId = object.id;
-  const recipient = object.get("recipient");
-
-  const querySessions = new Parse.Query("_Session");
-  const queryInstallations = new Parse.Query("_Installation");
-  queryInstallations.notEqualTo('deviceToken', null);
-  queryInstallations.notEqualTo('pushStatus', 'UNINSTALLED');
-  
-  querySessions.equalTo("user", recipient.toPointer());
-  queryInstallations.matchesKeyInQuery("installationId", "installationId", querySessions);
-
-  const installations = await queryInstallations.find({ useMasterKey: true });
-
-  await Promise.all(installations.map(async (installation) => {
-    const token = installation.get("deviceToken");
-    
-    const pushNotification = new Parse.Object("PushNotification");
-    pushNotification.set("GCMSenderId", installation.get("GCMSenderId"));
-    pushNotification.set("messageId", null);
-    pushNotification.set("token", token);
-    pushNotification.set("topic", null);
-    pushNotification.set("delivered", null);
-
-    var acl = new Parse.ACL();
-    acl.setPublicReadAccess(false);
-    acl.setPublicWriteAccess(false);
-    acl.setReadAccess(recipient.id, false);
-    acl.setWriteAccess(recipient.id, false);
-    acl.setRoleReadAccess("Admin", true);
-    acl.setRoleWriteAccess("Admin", true);
-    
-    pushNotification.setACL(acl);
-
-    const title = object.get('title');
-    const body = object.get('body');
-    const imageUrl = object.get('imageUrl') ?? undefined;
-    const data = object.get('data') !== undefined ? JSON.parse(object.get('data')) : undefined;
-
-    if (data !== undefined) {
-      data['notificationId'] = notificationId;
-    }
-
-    const notificationData = {
-      'notification': {
-        'title': title,
-        'body': body
-      },
-      'image': imageUrl,
-      'data': data
-    };
-
-    pushNotification.set("data", JSON.stringify(notificationData));
-
-    const result = await pushNotification.save(null, { useMasterKey: true });
-
-    pushNotificationsRelation.add(result);
-  }));
 });
