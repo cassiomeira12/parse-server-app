@@ -236,13 +236,3 @@ Parse.Cloud.job("website-visit", async (request) => {
 
   await websiteVisit.save(null, { useMasterKey: true });
 });
-
-Parse.Cloud.job("startServerNotificationAdmins", async (request) => {
-  const dateBR = new Date(new Date().toLocaleString('en', { timeZone: 'America/Sao_Paulo' }));
-  const alertNotification = {
-    'title': process.env.APP_NAME,
-    'body': `O servidor reiniciou às ${dateFormat(dateBR, 'dd/mm HH:MM')}h`
-  };
-
-  Parse.Cloud.run('alert-admins', alertNotification, { useMasterKey: true });
-});
