@@ -934,6 +934,7 @@ async function sendPushNotification(topic, title,  body, action) {
     null,
     action,
     null,
+    false,
   );
   
   return await Parse.Cloud.run('pushNotification', message, { useMasterKey: true });
