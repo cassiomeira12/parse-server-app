@@ -924,18 +924,19 @@ async function getWorkDay(date, user) {
 }
 
 async function sendPushNotification(topic, title,  body, action) {
-  const message = createPushMessageJson(
-    title,
-    body,
-    null,
-    '1033466834500',
-    null,
-    topic,
-    null,
-    action,
-    null,
-    false,
-  );
+  const message = {
+    'GCMSenderId': '1033466834500',
+    'topic': topic,
+    'message': {
+      'notification': {
+        'title': title,
+        'body': body
+      },
+      'data': {
+        'action': action,
+      }
+    }
+  };
   
   return await Parse.Cloud.run('pushNotification', message, { useMasterKey: true });
 }
