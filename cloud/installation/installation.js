@@ -214,7 +214,7 @@ Parse.Cloud.beforeSave("_Installation", async (request) => {
   const appVersion = object.get("appVersion");
   const channels = object.get("channels");
 
-  if (original === undefined) {
+  if (original === undefined || original.get('deviceToken') !== deviceToken) {
     if (GCMSenderId && deviceToken) {
       var pushTopics = [];
 
@@ -233,7 +233,6 @@ Parse.Cloud.beforeSave("_Installation", async (request) => {
 
       object.set("channels", pushTopics);
     }
-
   } else {
     if (GCMSenderId && deviceToken) {
       const oldAppVersion = original.get("appVersion");
