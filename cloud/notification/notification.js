@@ -129,7 +129,7 @@ Parse.Cloud.beforeSave("Notification", async (request) => {
     const installations = await queryInstallations.find({ useMasterKey: true });
 
     if (installations.length == 0) {
-      throw 'User has no installed App';
+      throw new Parse.Error(404, 'user has no installed app');
     }
 
     const pushNotificationsRelation = object.relation('pushNotifications');

@@ -56,7 +56,16 @@ Parse.Cloud.define('pushNotification', async (request) => {
 
   const result = await pushNotification.save(null, { useMasterKey: true });
 
-  return result;
+  return {
+    objectId: result.id,
+    GCMSenderId: result.get('GCMSenderId'),
+    topic: result.get('topic'),
+    data: JSON.parse(result.get('data')),
+    messageId: result.get('messageId'),
+    delivered: result.get('delivered'),
+    createdAt: result.createdAt.toISOString(),
+    updatedAt: result.updatedAt.toISOString(),
+  };
 }, validationAdminRules, {
   fields: ['GCMSenderId', 'message'],
   requireUser: true
@@ -76,7 +85,7 @@ Parse.Cloud.define('test-push-notification', async (request) => {
   const currentInstallation = await queryInstallation.first({ useMasterKey: true });
 
   if (currentInstallation === undefined) {
-    throw 'Installation not found';
+    throw new Parse.Error(404, 'installation not found');
   }
 
   const locale = currentInstallation.get("localeIdentifier");
@@ -178,7 +187,7 @@ Parse.Cloud.define('subscribeTopic', async (request) => {
   });
 
   if (installations.length === 0) {
-    throw 'device installation was not founded';
+    throw new Parse.Error(404, 'device installation was not founded');
   }
 
   const topics = await Promise.all(
@@ -247,7 +256,7 @@ Parse.Cloud.define('unsubscribeTopic', async (request) => {
   });
 
   if (installations.length === 0) {
-    throw 'device installation was not founded';
+    throw new Parse.Error(404, 'device installation was not founded');
   }
 
   const topics = await Promise.all(
@@ -345,9 +354,6 @@ Parse.Cloud.beforeSave("PushNotification", async (request) => {
   const body = notification.body;
   const imageUrl = notification.imageUrl;
   const data = notificationData.data;
-  const action = data.action;
-  const tag = data.tag;
-  const persistent = data.persistent;
 
   if (original === undefined) {
     var message = createPushMessageJson(
@@ -358,9 +364,7 @@ Parse.Cloud.beforeSave("PushNotification", async (request) => {
       token,
       topic,  
       null,
-      action,
-      tag,
-      persistent,
+      data,
     );
 
     try {
@@ -370,6 +374,9 @@ Parse.Cloud.beforeSave("PushNotification", async (request) => {
       object.set('messageId', messageId);
       object.set('delivered', true);
     } catch (error) {
+      if (error.code === 'ERR_BAD_REQUEST') {
+        throw new Parse.Error(error.status, error.message);
+      }
       if (error !== 'Incorrect Firebase Messaging Project') {
         catchError(error);
       }
@@ -499,9 +506,7 @@ const createPushMessageJson = (
   token,
   topic,
   restrictPackageName,
-  action,
-  tag,
-  persistentNotification,
+  data,
 ) => {
   // https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages
 
@@ -518,10 +523,8 @@ const createPushMessageJson = (
     'body': body,
   };
 
-  const data = {
-    'action': action,
-    'sticky': `${persistentNotification}`,
-  };
+  const tag = data.tag;
+  const sticky = data.sticky === 'true';
 
   var androidNotification = {
     'channel_id': 'push_notification',
@@ -529,7 +532,7 @@ const createPushMessageJson = (
     'click_action': 'FLUTTER_NOTIFICATION_CLICK',
     'notification_priority': 'PRIORITY_HIGH',
     'tag': tag, // replace notification when existing one in the notification drawer
-    'sticky': persistentNotification,
+    'sticky': sticky, // persistent notification
   };
 
   var appleNotification = {};

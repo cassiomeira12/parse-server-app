@@ -22,8 +22,7 @@ const validationAdminRules = async request => {
     return;
   }
 
-  throw "Unauthorized";
-
+  throw new Parse.Error(403, 'unauthorized');
 }
 
 module.exports = { validationAdminRules };

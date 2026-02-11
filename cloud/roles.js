@@ -30,7 +30,7 @@ Parse.Cloud.define('add-admin-user', async (request) => {
   const adminRole = await queryRole.first({ sessionToken: user.getSessionToken() });
 
   if (adminRole === undefined) {
-    throw 'Permission denied for this action'
+    throw new Parse.Error(403, 'Permission denied for this action');
   }
 
   const queryUser = new Parse.Query("_User");

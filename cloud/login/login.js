@@ -27,7 +27,7 @@ Parse.Cloud.define("change-password", async (request) => {
   const userLogged = await Parse.User.logIn(username, password, { installationId: installationId });
 
   if (user.id != userLogged.id) {
-    throw 'Usuário inválido';
+    throw new Parse.Error(403, 'invalid user');
   }
 
   userLogged.set("password", newPassword);
