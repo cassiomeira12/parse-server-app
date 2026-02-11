@@ -1,6 +1,5 @@
 const dateFormat = require('dateformat');
 const schedule = require('node-schedule');
-const { createPushMessageJson } = require('../push_notification/push_notification');
 
 Parse.Cloud.define('registerPoint', async (request) => {
   const { user } = request;
@@ -934,6 +933,7 @@ async function sendPushNotification(topic, title,  body, action) {
       },
       'data': {
         'action': action,
+        'tag': action
       }
     }
   };
