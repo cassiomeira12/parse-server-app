@@ -812,7 +812,6 @@ Parse.Cloud.job("startWorkPointSchedules", async (request) => {
     const weekDays = workPointConfig['weekDays'];
 
     const jobName = `work-point-push-[${weekDays}]-${hour}-${minutes}`;
-    console.log(`ScheduleJob ${jobName}`);
 
     const rule = new schedule.RecurrenceRule();
     rule.dayOfWeek = workPointConfig['weekDays'];
