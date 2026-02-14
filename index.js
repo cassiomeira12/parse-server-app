@@ -1,5 +1,6 @@
 const Sentry = require("@sentry/node");
 const express = require('express');
+const fileUpload = require('express-fileupload');
 const { default: ParseServer, ParseGraphQLServer } = require('parse-server');
 const { path, resolve } = require('path');
 const http = require('http');
@@ -23,8 +24,6 @@ if (!databaseUri) {
 const parseMount = process.env.PARSE_MOUNT;
 const serverURL = process.env.SERVER_URL + ':' + process.env.PORT;
 const graphQLServerURL = serverURL + '/graphql';
-
-
 
 const config = {
   appName: process.env.APP_NAME,
@@ -96,9 +95,15 @@ const parseServer = new ParseServer(config);
 
 var app;
 try {
-    app = require('./cloud/app');
+  app = require('./cloud/app');
 } catch (_) {
-    app = express();
+  app = express();
+  const fileUploadConfig = fileUpload({
+    limits: { fileSize: 500 * 1024 * 1024 },
+    useTempFiles : true,
+    tempFileDir : '/tmp/'
+  });
+  app.use(fileUploadConfig);
 }
 
 const projectPath = config.projectPath || __dirname;
@@ -170,7 +175,7 @@ const parseDashboard = new ParseDashboard({
       appName: process.env.APP_NAME,
       appId: process.env.APP_ID,
       masterKey: process.env.MASTER_KEY,
-      serverURL: process.env.PUBLIC_SERVER_URL,
+      serverURL: `${process.env.PUBLIC_SERVER_URL}/parse`,
       graphQLServerURL: graphQLServerURL,
       enableSecurityChecks: true,
       iconName: process.env.ICON,

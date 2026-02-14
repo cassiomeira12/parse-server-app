@@ -9,21 +9,13 @@ const VersionAppScheme = {
       type: "String",
       required: true,
     },
-    currentNameVersion: {
+    nameVersion: {
       type: "String",
       require: true,
     },
-    currentBuildVersion: {
+    buildVersion: {
       type: "Number",
       required: true,
-    },
-    minimumBuildVersion: {
-      type: "Number",
-      required: true,
-    },
-    pushNotificationTopic: {
-      type: "String",
-      require: true,
     },
     downloadUrl: {
       type: "String",
@@ -31,7 +23,8 @@ const VersionAppScheme = {
     },
   },
   protectedFields: {
-    "*": ["pushNotificationTopic"],
+    "*": ["downloadUrl"],
+    "role:Admin": ["package"]
   },
   classLevelPermissions: {
     get: {

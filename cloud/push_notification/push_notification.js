@@ -170,6 +170,64 @@ Parse.Cloud.define('alert-admins', async (request) => {
 Parse.Cloud.define('subscribeTopic', async (request) => {
   const { params } = request;
 
+  const topics = params.topics;
+  const installationId = request.installationId;
+
+  const queryInstallation = new Parse.Query("_Installation");
+  queryInstallation.equalTo("installationId", installationId);
+
+  const installation = await queryInstallation.first({ useMasterKey: true });
+
+  const GCMSenderId = installation.get("GCMSenderId");
+  const deviceToken = installation.get("deviceToken");
+
+  if (GCMSenderId && deviceToken) {
+    try {
+      const topicsSubscribed = await subscribeTopics(GCMSenderId, deviceToken, topics);
+      installation.set("channels", topicsSubscribed);
+      installation.save(null, { useMasterKey: true });
+      return topicsSubscribed;
+    } catch (error) {
+      catchError(error);
+      throw error;
+    }
+  }
+}, {
+  fields: ['topics'],
+});
+
+Parse.Cloud.define('unsubscribeTopic', async (request) => {
+  const { params } = request;
+
+  const topics = params.topics;
+  const installationId = request.installationId;
+
+  const queryInstallation = new Parse.Query("_Installation");
+  queryInstallation.equalTo("installationId", installationId);
+
+  const installation = await queryInstallation.first({ useMasterKey: true });
+
+  const GCMSenderId = installation.get("GCMSenderId");
+  const deviceToken = installation.get("deviceToken");
+
+  if (GCMSenderId && deviceToken) {
+    try {
+      const topicsSubscribed = await unSubscribeTopics(GCMSenderId, deviceToken, topics);
+      installation.set("channels", topicsSubscribed);
+      installation.save(null, { useMasterKey: true });
+      return topicsSubscribed;
+    } catch (error) {
+      catchError(error);
+      throw error;
+    }
+  }
+}, {
+  fields: ['topics'],
+});
+
+Parse.Cloud.define('subscribeUserTopic', async (request) => {
+  const { params } = request;
+
   const topic = params.topic;
   const userId = request.user.id;
 
@@ -236,7 +294,7 @@ Parse.Cloud.define('subscribeTopic', async (request) => {
   requireUser: true
 });
 
-Parse.Cloud.define('unsubscribeTopic', async (request) => {
+Parse.Cloud.define('unsubscribeUserTopic', async (request) => {
   const { params } = request;
 
   const topic = params.topic;
