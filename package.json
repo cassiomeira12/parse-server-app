@@ -16,6 +16,7 @@
     "dateformat": "4.5.1",
     "dotenv": "16.0.1",
     "express": "4.19.2",
+    "express-fileupload": "1.5.2",
     "gtoken": "7.1.0",
     "helmet": "5.1.0",
     "kerberos": "2.0.0",
