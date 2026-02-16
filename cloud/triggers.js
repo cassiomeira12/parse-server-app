@@ -17,12 +17,7 @@ Parse.Cloud.beforeSave("VersionApp", async (request) => {
 Parse.Cloud.beforeDelete("VersionApp", async (request) => {
   const { object } = request;
 
-  const nameVersion = object.get('nameVersion');
-  const downloadUrl = object.get('downloadUrl');
-  const splitUrl = downloadUrl.split('/');
-  const fileName = splitUrl[splitUrl.length - 1];
-
-  var filePath = `./public/releases/${nameVersion}/${fileName}`;
+  const filePath = object.get('filePath');
 
   try {
     fs.unlinkSync(filePath);

@@ -21,6 +21,10 @@ const VersionAppScheme = {
       type: "String",
       require: true,
     },
+    filePath: {
+      type: "String",
+      require: true,
+    },
   },
   protectedFields: {
     "*": ["downloadUrl"],
