@@ -2,27 +2,29 @@
 
 const crypto = require('crypto');
 const nodeBase64 = require('nodejs-base64-converter');
+
 const { catchError } = require('../../crashlytics');
+const { validationAdminRules } = require('../../roles/validation_roles');
 
 Parse.Cloud.define('generate-key-pair', async (request) => {
   return generateRsaKeys();
 });
 
-if (process.env.DEV_DEBUG === 'true') {
-  Parse.Cloud.define('encrypt', async (request) => {
-    const { params } = request;
-    const data = params.data;
-    return await encryptData(data);
-  });
-}
+Parse.Cloud.define('encrypt', async (request) => {
+  const { params } = request;
+  const data = params.data;
+  return await encryptData(data);
+}, validationAdminRules, {
+  requireUser: false
+});
 
-if (process.env.DEV_DEBUG === 'true') {
-  Parse.Cloud.define('decrypt', async (request) => {
-    const { params } = request;
-    const data = params.data;
-    return await decryptData(data);
-  });
-}
+Parse.Cloud.define('decrypt', async (request) => {
+  const { params } = request;
+  const data = params.data;
+  return await decryptData(data);
+}, validationAdminRules, {
+  requireUser: false
+});
 
 function generateRsaKeys() {
   const { publicKey, privateKey } = crypto.generateKeyPairSync('rsa', {
