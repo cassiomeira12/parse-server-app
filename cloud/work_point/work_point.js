@@ -1,6 +1,8 @@
 const dateFormat = require('dateformat');
 const schedule = require('node-schedule');
 
+const { checkHoliday } = require('./holidays');
+
 Parse.Cloud.define('registerPoint', async (request) => {
   const { user } = request;
 
@@ -185,6 +187,10 @@ Parse.Cloud.define('listPoints', async (request) => {
   const date = new Date(year, month - 1);
   const lastDayOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
+  const holidays = await checkHoliday(date.getMonth() + 1, date.getFullYear());
+
+  createHoliday('Carnaval');
+
   const workDayList = [];
   
   for (let i = 1; i < lastDayOfMonth.getDate() + 1; i++) {
@@ -208,6 +214,11 @@ Parse.Cloud.define('listPoints', async (request) => {
     };
     workDayList.push(workDay);
   }
+
+  holidays.map((holiday) => {
+    const day = parseInt(holiday.date.split("-")[2]);
+    workDayList[day - 1].holiday = true;
+  });
 
   const queryWorkDay = new Parse.Query("WorkDay");
   queryWorkDay.equalTo("month", date.getMonth() + 1);
@@ -535,11 +546,14 @@ Parse.Cloud.beforeSave("WorkDay", async (request) => {
     var acl = new Parse.ACL();
     acl.setPublicReadAccess(false);
     acl.setPublicWriteAccess(false);
-    acl.setReadAccess(user.id, true);
-    acl.setWriteAccess(user.id, true);
-    acl.setRoleReadAccess("Admin", true);
-    acl.setRoleWriteAccess("Admin", true);
-    
+
+    if (user) {
+      acl.setReadAccess(user.id, true);
+      acl.setWriteAccess(user.id, true);
+      acl.setRoleReadAccess("Admin", true);
+      acl.setRoleWriteAccess("Admin", true);
+    }
+
     object.setACL(acl);
   }
 });
@@ -742,13 +756,18 @@ Parse.Cloud.beforeSave("WorkPointConfig", async (request) => {
   rule.hour = hour;
   rule.minute = minutes;
 
-  schedule.scheduleJob(jobName, rule, function() {
-    sendPushNotification(
-      `work-point-${weekDay}-${hour}-${minutes}`,
-      'Hora do ponto',
-      `Registre seu ponto das ${hour}:${minutes}h`,
-      'register-work-point',
-    );
+  schedule.scheduleJob(jobName, rule, async function() {
+    const holiday = await todayIsHoliday();
+    if (holiday) {
+      createHoliday(holiday);
+    } else {
+      sendPushNotification(
+        `work-point-${weekDay}-${hour}-${minutes}`,
+        'Hora do ponto',
+        `Registre seu ponto das ${hour}:${minutes}h`,
+        'register-work-point',
+      );
+    }
   });
 });
 
@@ -805,7 +824,7 @@ Parse.Cloud.job("startWorkPointSchedules", async (request) => {
     }),
   );
 
-  response.map((workPointConfig) => {
+  response.map(async (workPointConfig) => {
     const time = workPointConfig['time'];
     const hour = time.split(":")[0];
     const minutes = time.split(":")[1];
@@ -818,15 +837,20 @@ Parse.Cloud.job("startWorkPointSchedules", async (request) => {
     rule.hour = hour;
     rule.minute = minutes;
 
-    schedule.scheduleJob(jobName, rule, function() {
+    schedule.scheduleJob(jobName, rule, async function() {
       const now = new Date();
       const weekDay = now.getDay();
-      sendPushNotification(
-        `work-point-${weekDay}-${hour}-${minutes}`,
-        'Hora do ponto',
-        `Registre seu ponto das ${hour}:${minutes}h`,
-        'register-work-point',
-      );
+      const holiday = await todayIsHoliday();
+      if (holiday) {
+        createHoliday(holiday);
+      } else {
+        sendPushNotification(
+          `work-point-${weekDay}-${hour}-${minutes}`,
+          'Hora do ponto',
+          `Registre seu ponto das ${hour}:${minutes}h`,
+          'register-work-point',
+        );
+      }
     });
   });
 
@@ -919,6 +943,54 @@ async function getWorkDay(date, user) {
     'hasInconsistency': !allowToCalcTime,
     'workPoints': workPoints,
   };
+}
+
+async function todayIsHoliday() {
+  const today = new Date();
+  const holidays = await checkHoliday(today.getMonth() + 1, today.getFullYear());
+
+  holidays.map((holiday) => {
+    const day = parseInt(holiday.date.split("-")[2]);
+    if (today.getDate() == day) {
+      return holiday.localName ?? holiday.name;
+    }
+  });
+
+  return null;
+}
+
+async function createHoliday(holidayInfo) {
+  const today = new Date();
+
+  const queryWorkDay = new Parse.Query("WorkDay");
+  queryWorkDay.equalTo("day", today.getDate());
+  queryWorkDay.equalTo("month", today.getMonth() + 1);
+  queryWorkDay.equalTo("year", today.getFullYear());
+  queryWorkDay.equalTo("holiday", true);
+
+  const workDayResponse = await queryWorkDay.first({ useMasterKey: true });
+
+  if (workDayResponse == undefined) {
+    const workday = new Parse.Object("WorkDay");
+    workday.set("day", today.getDate());
+    workday.set("month", today.getMonth() + 1);
+    workday.set("year", today.getFullYear());
+    workday.set("totalSeconds", 0);
+    workday.set("weekend", isWeekend(today));
+    workday.set("allowance", false);
+    workday.set("holiday", true);
+    workday.set("dayOff", false);
+    workday.set("info", holidayInfo);
+
+    await workday.save(null, { useMasterKey: true });
+
+    // sendPushNotification(
+    //   `work-point-${weekDay}-${hour}-${minutes}`,
+    //   holidayInfo ?? 'Hoje é Feriado',
+    //   `Aproveite o feriado, caso for trabalhar, registre seu ponto normalmente.`,
+    //   'open-notification',
+    // );
+  }
 }
 
 async function sendPushNotification(topic, title,  body, action) {
