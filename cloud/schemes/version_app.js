@@ -28,7 +28,7 @@ const VersionAppScheme = {
   },
   classLevelPermissions: {
     get: {
-      requiresAuthentication: true
+      "role:Admin": true
     },
     find: {
       "role:Admin": true
