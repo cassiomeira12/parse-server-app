@@ -24,7 +24,7 @@ app.all('*', async (req, res, next)  => {
   const othersEndpoints = [
     '/graphql',
     '/file',
-  ].indexOf(endpoint) === -1;
+  ].indexOf(endpoint) !== -1;
 
   if (ignoreOptionsRequest && (isParseEndpoint || othersEndpoints)) {
     const endpointsToIgnore = [
@@ -34,6 +34,7 @@ app.all('*', async (req, res, next)  => {
       '/parse/functions/encrypt',
       '/parse/functions/decrypt',
       '/parse/functions/dev-otp-code',
+      '/file',
     ];
     if (endpointsToIgnore.indexOf(endpoint) === -1) {
       try {
