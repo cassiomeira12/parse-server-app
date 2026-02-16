@@ -4,9 +4,10 @@ const validationAdminRules = async request => {
   if (request.master) {
     return;
   }
-  // if (!request.user || request.user.id !== 'masterUser') {
-  //   throw 'Unauthorized';
-  // }
+
+  if (!request.user) {
+    throw new Parse.Error(403, 'unauthorized');
+  }
 
   const queryRole = new Parse.Query("_Role");
   queryRole.equalTo("name", "Admin");
