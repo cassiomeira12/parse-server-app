@@ -15,7 +15,7 @@ const fileUploadConfig = fileUpload({
 app.use(fileUploadConfig);
 
 app.all('*', async (req, res, next)  => {
-  const regex = /^\/parse\/(classes|functions)\/.+$/;
+  const regex = /\/parse\/functions\//;
   const endpoint = req.originalUrl;
 
   const ignoreOptionsRequest = req.method !== 'OPTIONS';
