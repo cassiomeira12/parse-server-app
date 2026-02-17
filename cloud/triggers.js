@@ -14,14 +14,16 @@ Parse.Cloud.beforeSave("VersionApp", async (request) => {
   }
 });
 
-Parse.Cloud.beforeDelete("VersionApp", async (request) => {
+Parse.Cloud.afterDelete("VersionApp", async (request) => {
   const { object } = request;
 
   const filePath = object.get('filePath');
 
-  try {
-    fs.unlinkSync(filePath);
-  } catch (error) {
-    console.log(error);
+  if (filePath) {
+    try {
+      fs.unlinkSync(filePath);
+    } catch (error) {
+      console.log(error);
+    }
   }
 });
