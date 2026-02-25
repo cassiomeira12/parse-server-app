@@ -25,7 +25,6 @@ const UserScheme = {
       "role:Admin": true
     },
     find: {
-      requiresAuthentication: true,
       "role:Admin": true
     },
     count: {
