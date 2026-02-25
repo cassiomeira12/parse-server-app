@@ -134,6 +134,10 @@ Parse.Cloud.define('updateWorkPoint', async (request) => {
       workPoint.set("manual", true);
       workPoint.set("deleted", false);
 
+      if (!isToday(date)) {
+        workPoint.set("sendPush", false); // Not send push notification
+      }
+      
       await workPoint.save(null, { sessionToken: user.getSessionToken() });
 
       return await getWorkDay(date, user);
@@ -189,7 +193,7 @@ Parse.Cloud.define('listPoints', async (request) => {
 
   const holidays = await checkHoliday(date.getMonth() + 1, date.getFullYear());
 
-  createHoliday('Carnaval');
+  // createHoliday('Carnaval');
 
   const workDayList = [];
   
@@ -530,12 +534,16 @@ Parse.Cloud.beforeSave("WorkPoint", async (request) => {
     
     object.setACL(acl);
 
-    sendPushNotification(
-      user.id,
-      'Ponto registrado',
-      `Seu ponto foi registrado às ${hour}:${minutes}h`,
-      'open-notification',
-    );
+    if (object.get('sendPush') == undefined) {
+      sendPushNotification(
+        user.id,
+        'Ponto registrado',
+        `Seu ponto foi registrado às ${hour}:${minutes}h`,
+        'open-notification',
+      );
+    } else {
+      object.unset('sendPush');
+    }
   }
 });
 
