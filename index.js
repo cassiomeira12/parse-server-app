@@ -348,7 +348,10 @@ server.listen(process.env.PORT, function () {
 ParseServer.createLiveQueryServer(server);
 
 Sentry.init({
+  environment: config.appName.replace(new RegExp(' ', 'g'), '_').toLowerCase(),
   dsn: process.env.CRASHLYTICS_SENTRY_DSN,
+  debug: process.env.DEV_DEBUG === 'true',
   sendDefaultPii: true,
+  sampleRate: 1.0,
   tracesSampleRate: 1.0,
 });
