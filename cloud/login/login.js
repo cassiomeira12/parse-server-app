@@ -65,7 +65,7 @@ Parse.Cloud.afterLogout(async (request) => {
   const { object: session, user }  = request;
 
   const installationId = session.get('installationId');
-  const userTopics = user.get('pushTopics');
+  const userTopics = user.get('pushTopics') ?? [];
 
   unSubscribeAllUserTopics(userTopics, installationId);
 });

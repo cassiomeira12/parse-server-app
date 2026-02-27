@@ -28,7 +28,7 @@ Parse.Cloud.define('installation', async (request) => {
   if (request.user != undefined) {
     const queryUser = new Parse.Query("_User");
     const user = await queryUser.get(request.user.id, { useMasterKey: true });
-    const userTopics = user.get('pushTopics');
+    const userTopics = user.get('pushTopics') ?? [];
     userTopics.map((topic) => userPushTopics.push(topic));
   }
 

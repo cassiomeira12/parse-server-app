@@ -68,7 +68,7 @@ Parse.Cloud.beforeDelete("_User", async (request) => {
   querySessions.equalTo("user", object.toPointer());
   const sessions = await querySessions.find({ useMasterKey: true });
 
-  const userTopics = user.get('pushTopics');
+  const userTopics = user.get('pushTopics') ?? [];
 
   await Promise.all(
     sessions.map((session) => {

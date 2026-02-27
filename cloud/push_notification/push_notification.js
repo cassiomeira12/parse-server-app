@@ -274,10 +274,7 @@ Parse.Cloud.define('subscribeUserTopic', async (request) => {
     const queryUser = new Parse.Query("_User");
     const user = await queryUser.get(userId, { useMasterKey: true });
 
-    var pushTopics = user.get('pushTopics');
-    if (pushTopics == undefined) {
-      pushTopics = [];
-    }
+    var pushTopics = user.get('pushTopics') ?? [];
     
     if (pushTopics.includes(topic) === false) {
       pushTopics.push(topic);
@@ -343,10 +340,7 @@ Parse.Cloud.define('unsubscribeUserTopic', async (request) => {
     const queryUser = new Parse.Query("_User");
     const user = await queryUser.get(userId, { useMasterKey: true });
 
-    var pushTopics = user.get('pushTopics');
-    if (pushTopics == undefined) {
-      pushTopics = [];
-    }
+    var pushTopics = user.get('pushTopics') ?? [];
 
     const pushTopicsUpdated = pushTopics.filter((pushTopic) => pushTopic !== topic);
 
