@@ -68,7 +68,7 @@ Parse.Cloud.beforeDelete("_User", async (request) => {
   querySessions.equalTo("user", object.toPointer());
   const sessions = await querySessions.find({ useMasterKey: true });
 
-  const userTopics = user.get('pushTopics') ?? [];
+  const userTopics = object.get('pushTopics') ?? [];
 
   await Promise.all(
     sessions.map((session) => {
@@ -83,7 +83,7 @@ Parse.Cloud.beforeDelete("_User", async (request) => {
 });
 
 Parse.Cloud.beforeSave("UserDeleted", async (request) => {
-  const { original, object, user } = request;
+  const { original, object } = request;
   
   if (original === undefined) {
     var acl = new Parse.ACL();
