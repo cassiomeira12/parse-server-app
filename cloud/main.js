@@ -8,6 +8,7 @@ require('./jobs');
 require('./push_notification/push_notification');
 require('./notification/notification');
 require('./web_visit_history/web_visit_history');
+require('./ip_address');
 
 require('./security/encrypt/encrypt');
 require('./security/otp/otp');
