@@ -5,16 +5,16 @@
       "id": "env",
       "type": "pickString",
       "description": "Escolha o Environment a ser executado",
-      "default": ".env",
+      "default": "env",
       "options": [
-        ".env",
+        "env",
       ]
     }
   ],
   "configurations": [
     {
       "name": "Parse Server (Dev)",
-      "command": "npm run dev dotenv_config_path=${input:env}",
+      "command": "npm run dev dotenv_config_path=../envs/${input:env}",
       "request": "launch",
       "type": "node-terminal"
     }
